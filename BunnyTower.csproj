@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<OutputType Condition="'$(Configuration)' == 'Debug'">Exe</OutputType>
+		<OutputType Condition="'$(Configuration)' == 'Release'">WinExe</OutputType>
+		<TargetFramework>net9.0</TargetFramework>
+		<TargetName>MyGame</TargetName>
+		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+		<GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+		<StartupObject>MyGame.Program</StartupObject>
+		<AssemblyName>MyGame</AssemblyName>
+		<RootNamespace>MyGame</RootNamespace>
+		<TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<ApplicationIcon />
+		<NullableReferenceTypes>true</NullableReferenceTypes>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<Content Include="Content\**\*.*">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+		<Content Include="ContentStatic\**\*.*">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+
+	<PropertyGroup>
+		<DefaultItemExcludes>$(DefaultItemExcludes);lib\**\*;ContentBuilder\**\*</DefaultItemExcludes>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="lib\MoonWorks\MoonWorks.csproj" />
+		<ProjectReference Include="lib\MoonTools.ECS\MoonTools.ECS.csproj" />
+		<ProjectReference Include="ContentBuilder\ContentBuilderUI\lib\ImGui.NET\ImGui.NET.csproj" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+	</ItemGroup>
+
+	<!-- The MacOS dynamic loader really sucks! -->
+	<!-- https://github.com/dotnet/runtime/issues/96337 -->
+	<Target Condition="$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))" Name="PostBuild" AfterTargets="PostBuildEvent">
+		<Exec Command="install_name_tool -add_rpath @executable_path/. $(TargetPath)" />
+	</Target>
+
+	<!-- It really really sucks! -->
+	<Target Condition="$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))" Name="PostBuild" AfterTargets="PostBuildEvent">
+		<Exec Command="codesign -s - -f --deep $(TargetPath)" />
+	</Target>
+
+	<Import Project=".\CopyMoonlibs.targets" />
+</Project>

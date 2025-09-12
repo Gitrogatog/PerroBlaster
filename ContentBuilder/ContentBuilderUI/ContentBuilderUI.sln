@@ -1,0 +1,35 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ContentBuilderUI", "ContentBuilderUI.csproj", "{20534630-99A5-CE38-9B49-044A375E953F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "lib", "lib", "{3A8DF596-E814-FECC-DD4B-D8EF8AAC1A0D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImGui.NET", "lib\ImGui.NET\ImGui.NET.csproj", "{2134D6A7-3E0B-4791-3C17-8B378DD87D55}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{20534630-99A5-CE38-9B49-044A375E953F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{20534630-99A5-CE38-9B49-044A375E953F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{20534630-99A5-CE38-9B49-044A375E953F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{20534630-99A5-CE38-9B49-044A375E953F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2134D6A7-3E0B-4791-3C17-8B378DD87D55}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2134D6A7-3E0B-4791-3C17-8B378DD87D55}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2134D6A7-3E0B-4791-3C17-8B378DD87D55}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2134D6A7-3E0B-4791-3C17-8B378DD87D55}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{2134D6A7-3E0B-4791-3C17-8B378DD87D55} = {3A8DF596-E814-FECC-DD4B-D8EF8AAC1A0D}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {949C1072-9137-4DDD-9AD7-9CE645030C22}
+	EndGlobalSection
+EndGlobal
