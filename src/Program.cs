@@ -21,8 +21,8 @@ namespace MyGame
 #if DEBUG
             WindowCreateInfo windowCreateInfo = new WindowCreateInfo
             {
-                WindowWidth = 320 * 2,
-                WindowHeight = 240 * 2,
+                WindowWidth = Dimensions.GAME_W * 2,
+                WindowHeight = Dimensions.GAME_H * 2,
                 WindowTitle = "By Bunnies, For Bunnies",
                 ScreenMode = ScreenMode.Windowed
             };

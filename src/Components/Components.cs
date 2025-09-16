@@ -1,9 +1,8 @@
-using System.Globalization;
 using System.Numerics;
+using MoonWorks.Audio;
 using MoonWorks.Graphics;
 using MyGame.Content;
 using MyGame.Data;
-using MyGame.Systems;
 
 namespace MyGame.Components;
 
@@ -90,12 +89,36 @@ public readonly record struct DamageOnContact();
 public readonly record struct TakeDamageOnContact();
 public readonly record struct IgnoreCollision();
 public readonly record struct ChangeLevel(int LevelID);
+public readonly record struct CanCoyoteJump();
+public readonly record struct CoyoteGrounded();
+public readonly record struct CanPivot(float Decel, float MinSpeedToPivot);
+public readonly record struct IsPivoting();
 public readonly record struct DisplayDeathScreen(ThingType CauseOfDeath);
+public readonly record struct AddAfterTime<T>(float Time, T Component) : TimedComponent<AddAfterTime<T>> where T : unmanaged
+{
+    public AddAfterTime<T> Update(float t)
+    {
+        return new AddAfterTime<T>(t, Component);
+    }
+}
 public readonly record struct AccelParams(float groundAccel, float groundTurnAccel, float airAccel, float airTurnAccel)
 {
     public float GetAccel(bool isGrounded, bool isTurning) => isGrounded ? (isTurning ? groundTurnAccel : groundAccel) : (isTurning ? airTurnAccel : airAccel);
 }
-public readonly record struct PlayOnce(StaticSoundID AudioID, bool RandomizePitch = false);
+public readonly record struct PlayStaticSFX(
+    StaticSoundID StaticSoundID,
+    SoundCategory Category = SoundCategory.Generic,
+    float Volume = 1,
+    float Pitch = 0,
+    float Pan = 0
+)
+{
+    public AudioBuffer Sound => StaticAudio.Lookup(StaticSoundID);
+}
+public readonly record struct SetAnimation(SpriteAnimation Animation, bool ForceUpdate = false)
+{
+    public SetAnimation(SpriteAnimationInfo animInfo, bool forceUpdate = false) : this(new SpriteAnimation(animInfo), forceUpdate) { }
+}
 public readonly record struct Facing(bool Right);
 public readonly record struct RushAtPlayer(Cardinal Direction, float Distance, float Speed);
 public readonly record struct TextSpriteParent();
@@ -106,6 +129,8 @@ public readonly record struct IntendedMove(float Value);
 public readonly record struct MoveSpeed(float Value);
 public readonly record struct AttemptJumpThisFrame();
 public readonly record struct CanJump(float Value);
+public readonly record struct MaxSpeedJump(float Value);
+public readonly record struct BouncesOffWalls(float MinSpeed);
 public readonly record struct CollidesWithSolids();
 public readonly record struct Player(int Index);
 public readonly record struct Orientation(float Angle);

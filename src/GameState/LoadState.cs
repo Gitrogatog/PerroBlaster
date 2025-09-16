@@ -123,7 +123,7 @@ public class LoadState : GameState
     {
         AsyncFileLoader.Dispose();
         AsyncFileLoader = null;
-        StaticAudioPacks.pack_0.SliceBuffers();
+        StaticAudioPacks.SliceBuffers();
         StaticAudio.LoadAll();
         SpriteAnimations.LoadAll();
     }

@@ -15,6 +15,7 @@ using MyGame.Content;
 using MyGame.Data;
 using MyGame.Spawn;
 using MyGame.Systems;
+using RollAndCash.Systems;
 
 
 
@@ -68,6 +69,7 @@ public class MainState : GameState
         World = new World();
         EntityPrefabs.Init(World);
         updateGroup = new SystemGroup(World)
+            .Add(new AddAfterTimeSystem<PlayStaticSFX>(World, true))
             .Add(new TimerSystem(World))
             .Add(new Input(World, Game.Inputs, Game.MainWindow))
             .Add(new PlayerController(World))
@@ -76,6 +78,8 @@ public class MainState : GameState
             .Add(new Collision(World))
             .Add(new ThrowSystem(World))
             .Add(new OffsetSystem(World))
+            .Add(new AnimationSystem(World))
+            .Add(new SetSpriteAnimationSystem(World))
             .Add(new UpdateSpriteAnimationSystem(World))
             .Add(new AdvanceCharCountSystem(World))
             .Add(new PlayerDeathSystem(World))

@@ -119,6 +119,54 @@ public class Motion : MoonTools.ECS.System
         return position + movement;
     }
 
+    public Vector2 CalcIntendedVelocity(Entity entity, Vector2 vel, float dt)
+    {
+        float maxMoveSpeed = (Has<MoveSpeed>(entity) ? Get<MoveSpeed>(entity).Value : MoveConsts.MOVE_SPEED);
+        float intended = Get<IntendedMove>(entity).Value;
+        float targetVelocity = intended * maxMoveSpeed;
+        if (Has<CanPivot>(entity))
+        {
+            (float decel, float pivotSpeed) = Get<CanPivot>(entity);
+            // start pivot vs continue pivot
+            bool didStartPivot = false;
+            bool intendedOppositeToVelocity = MathF.Sign(vel.X) != MathF.Sign(intended);
+
+            if (Math.Abs(vel.X) >= pivotSpeed && intendedOppositeToVelocity && Has<Grounded>(entity))
+            {
+                Set<IsPivoting>(entity);
+                didStartPivot = true;
+            }
+            if (didStartPivot || Has<IsPivoting>(entity))
+            {
+                if (!intendedOppositeToVelocity)
+                {
+                    Remove<IsPivoting>(entity);
+                }
+                else
+                {
+                    vel.X = MathUtils.MoveTowards(vel.X, 0, decel * dt);
+                    if (vel.X == 0)
+                    {
+                        Remove<IsPivoting>(entity);
+                        vel.X = targetVelocity;
+                    }
+                    return vel;
+                }
+            }
+        }
+        if (Has<AccelParams>(entity))
+        {
+            float accel = Get<AccelParams>(entity).GetAccel(Has<Grounded>(entity), targetVelocity > 0 && vel.X < 0 || targetVelocity < 0 && vel.X > 0);
+            vel.X = MathUtils.MoveTowards(vel.X, targetVelocity, accel * dt);
+            // vel.X = MathUtils.LerpDecay(vel.X, targetVelocity, accel, dt);
+        }
+        else
+        {
+            vel.X = targetVelocity;
+        }
+        return vel;
+    }
+
     public override void Update(TimeSpan delta)
     {
         float dt = (float)delta.TotalSeconds;
@@ -175,14 +223,31 @@ public class Motion : MoonTools.ECS.System
             {
                 if (Has<AttemptJumpThisFrame>(entity))
                 {
-                    if (Has<Grounded>(entity))
+                    if (Has<Grounded>(entity) || Has<IsPivoting>(entity))
                     {
                         if (Has<CanJump>(entity))
                         {
-                            vel.Y = -MoveConsts.MAX_JUMP_POWER;
+                            float jumpSpeed = Get<CanJump>(entity).Value;
+                            if (Has<MaxSpeedJump>(entity) && Has<MoveSpeed>(entity))
+                            {
+                                float maxJumpSpeed = Get<MaxSpeedJump>(entity).Value;
+                                if (Has<IsPivoting>(entity))
+                                {
+                                    vel.Y = -maxJumpSpeed;
+                                }
+                                else
+                                {
+                                    vel.Y = -MathUtils.Lerp(jumpSpeed, maxJumpSpeed, MathF.Abs(vel.X / Get<MoveSpeed>(entity).Value));
+                                }
+                            }
+                            else
+                            {
+                                vel.Y = -jumpSpeed;
+                            }
                             Remove<Grounded>(entity);
                             Set(entity, new IsJumping());
-                            Set(CreateEntity(), new PlayOnce(StaticAudio.PickUp));
+                            Set(CreateEntity(), new PlayStaticSFX(StaticAudio.PickUp));
+                            Remove<IsPivoting>(entity);
                         }
                     }
                     // vel.Y = -Get<CanJump>(entity).Value;
@@ -193,31 +258,22 @@ public class Motion : MoonTools.ECS.System
                         vel.X = touchingRight ? -MoveConsts.WALLJUMP_SPEED_X : MoveConsts.WALLJUMP_SPEED_X;
                         Set(entity, new Facing(!touchingRight));
                         Set(entity, new IsJumping());
-                        Set(CreateEntity(), new PlayOnce(StaticAudio.PickUp));
+                        Set(CreateEntity(), new PlayStaticSFX(StaticAudio.PickUp));
+                        Remove<CoyoteGrounded>(entity);
                     }
 
                     Remove<AttemptJumpThisFrame>(entity);
                 }
                 if (Has<IntendedMove>(entity))
                 {
-                    float targetVelocity = Get<IntendedMove>(entity).Value * (Has<MoveSpeed>(entity) ? Get<MoveSpeed>(entity).Value : MoveConsts.MOVE_SPEED);
-                    if (Has<AccelParams>(entity))
-                    {
-                        float accel = Get<AccelParams>(entity).GetAccel(Has<Grounded>(entity), targetVelocity > 0 && vel.X < 0 || targetVelocity < 0 && vel.X > 0);
-                        vel.X = MathUtils.MoveTowards(vel.X, targetVelocity, accel * dt);
-                        // vel.X = MathUtils.LerpDecay(vel.X, targetVelocity, accel, dt);
-                    }
-                    else
-                    {
-                        vel.X = targetVelocity;
-                    }
+                    vel = CalcIntendedVelocity(entity, vel, dt);
                     Remove<IntendedMove>(entity);
                 }
             }
 
             if (Has<Gravity>(entity))
             {
-                if (Has<Grounded>(entity))
+                if (Has<Grounded>(entity) || Has<IsPivoting>(entity))
                 {
                     vel.Y = MathF.Min(vel.Y, 0);
                     Remove<Grounded>(entity); // removes grounded on all entities before checking again to see if they are grounded this frame
@@ -314,7 +370,14 @@ public class Motion : MoonTools.ECS.System
                 {
                     if (velocity.X < 0)
                     {
-                        Set(entity, new Velocity(0, velocity.Y));
+                        if (Has<BouncesOffWalls>(entity) && -Get<BouncesOffWalls>(entity).MinSpeed >= velocity.X)
+                        {
+                            Set(entity, new Velocity(-velocity.X, velocity.Y));
+                        }
+                        else
+                        {
+                            Set(entity, new Velocity(0, velocity.Y));
+                        }
                     }
                     if (Has<Facing>(entity) && !Get<Facing>(entity).Right)
                     {
@@ -325,7 +388,15 @@ public class Motion : MoonTools.ECS.System
                 {
                     if (velocity.X > 0)
                     {
-                        Set(entity, new Velocity(0, velocity.Y));
+                        if (Has<BouncesOffWalls>(entity) && Get<BouncesOffWalls>(entity).MinSpeed <= velocity.X)
+                        {
+                            Set(entity, new Velocity(-velocity.X, velocity.Y));
+                        }
+                        else
+                        {
+                            Set(entity, new Velocity(0, velocity.Y));
+                        }
+
                     }
                     if (Has<Facing>(entity) && Get<Facing>(entity).Right)
                     {
@@ -343,6 +414,10 @@ public class Motion : MoonTools.ECS.System
                 {
                     Set(entity, new Grounded());
                     Remove<IsJumping>(entity);
+                    if (Has<CanCoyoteJump>(entity))
+                    {
+                        Set(entity, new CoyoteGrounded());
+                    }
                 }
             }
         }

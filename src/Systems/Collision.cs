@@ -31,6 +31,7 @@ public class Collision : MoonTools.ECS.System
                 Set(entityB, new Velocity());
                 Remove<CanInteract>(entityB);
                 Relate(entityA, entityB, new Throwing());
+                Set(CreateEntity(), new PlayStaticSFX(StaticAudio.Sumo_Attack));
                 Console.WriteLine("Starting throw!");
             }
 
@@ -66,6 +67,7 @@ public class Collision : MoonTools.ECS.System
                 Remove<AttemptJumpThisFrame>(throwTarget);
                 Remove<IntendedMove>(throwTarget);
                 Set(CreateEntity(), new CauseOfDeath(ThingType.Bunny));
+                EntityPrefabs.CreateTimedMessage(new PlayStaticSFX(StaticAudio.delarune_explosion), 1f);
                 Console.WriteLine("ending throw!");
             }
         }

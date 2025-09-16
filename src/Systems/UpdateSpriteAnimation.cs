@@ -54,31 +54,6 @@ public class UpdateSpriteAnimationSystem : MoonTools.ECS.System
             var frames = flicker.ElapsedFrames + 1;
             Set(entity, new ColorFlicker(frames, flicker.Color));
         }
-
-        // Score screen text
-        // foreach (var entity in TextFilter.Entities)
-        // {
-        //     if (HasOutRelation<CountUpScore>(entity) && !HasOutRelation<DontDraw>(entity))
-        //     {
-        //         var timerEntity = OutRelationSingleton<CountUpScore>(entity);
-        //         var timeFactor = 1 - Get<Timer>(timerEntity).Remaining;
-        //         var data = GetRelationData<CountUpScore>(entity, timerEntity);
-        //         var value = (int)Math.Floor(float.Lerp(data.Start, data.End, Easing.InOutExpo(timeFactor)));
-        //         Set(entity, new Text(
-        //             Fonts.KosugiID,
-        //             FontSizes.SCORE,
-        //             $"{value}",
-        //             HorizontalAlignment.Center,
-        //             VerticalAlignment.Middle
-        //         ));
-
-        //         var lastValue = Get<LastValue>(entity).value;
-        //         if (lastValue != value)
-        //         {
-        //             Send(new PlayStaticSoundMessage(Rando.GetRandomItem(AudioArrays.Coins), Data.SoundCategory.Generic, 1f, .9f + (.1f * ((float)value / 1000f)), 0f));
-        //         }
-        //     }
-        // }
     }
 
     public void UpdateSpriteAnimation(Entity entity, float dt)

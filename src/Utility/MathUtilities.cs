@@ -27,6 +27,10 @@ public static class MathUtils
     {
         return (int)MathF.Ceiling(input);
     }
+    public static float Lerp(float a, float b, float t)
+    {
+        return a + (b - a) * t;
+    }
     // the closer the exponent is to 0, the closer math.exp is to 1, and thus the closer the final value is to a
     // a is the start, b is the end
     // the higher the decay the faster we reach b

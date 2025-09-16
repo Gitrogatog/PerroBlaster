@@ -10,7 +10,7 @@ public class ProximityToPlayerSystem : MoonTools.ECS.System
     private Filter RushFilter;
     static int XDistance => 25;
     static int BackYDistance = 20;
-    static int YDistance => 200;
+    static int YDistance => 130;
     static float RushSpeed => 400;
 
     public ProximityToPlayerSystem(World world) : base(world)

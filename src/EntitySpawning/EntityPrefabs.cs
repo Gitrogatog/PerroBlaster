@@ -11,6 +11,7 @@ using MyGame.Components;
 using MyGame.Content;
 using MyGame.Data;
 using MyGame.Relations;
+using MyGame.Systems;
 using MyGame.Utility;
 
 namespace MyGame.Spawn;
@@ -37,6 +38,12 @@ public static class EntityPrefabs
         var entity = World.CreateEntity();
         World.Set(entity, new DestroyAtEndOfFrame());
         World.Set(entity, component);
+        return entity;
+    }
+    public static Entity CreateTimedMessage<T>(T component, float time) where T : unmanaged
+    {
+        var entity = World.CreateEntity();
+        World.Set(entity, new AddAfterTime<T>(time, component));
         return entity;
     }
     public static Entity CreateSF2SpriteText(string input, int worldX, int worldY, int separationX, int separationY, bool centeredX, bool centeredY, int scale = 1, bool dontDraw = false) => manipulator.CreateSpriteText(input, SpriteAnimations.SF2_Font, 12, 12, separationX, separationY, worldX, worldY, scale, centeredX, centeredY, dontDraw);
@@ -116,18 +123,25 @@ internal class EntityManipulator : Manipulator
         Set(entity, new SpriteScale(Vector2.One * TileConsts.TILE_MULT));
         Set(entity, new ControlledByPlayer());
         Set(entity, new Gravity());
-        Set(entity, new CanJump(130));
+        // Set(entity, new CanJump(250));
+        Set(entity, new CanJump(200));
+        Set(entity, new MaxSpeedJump(255));
         Set(entity, new Depth(-4));
         // Set(entity, new AccelParams(5, 5.5f, 1f, 1f));
-        Set(entity, new AccelParams(350, 400, 210, 210));
+        Set(entity, new AccelParams(300, 350, 225, 225));
         Set(entity, new SpriteAnimation(SpriteAnimations.Skeleton_Walk));
         Set(entity, new CollidesWithSolids());
-        Set(entity, new DrawAsRectangle());
+        // Set(entity, new DrawAsRectangle());
+        // Set(entity, new CanCoyoteJump());
+        Set(entity, new BouncesOffWalls(55));
+        Set(entity, new CanPivot(339, 119));
+        Set(entity, new MoveSpeed(120));
         Set(entity, new Facing(true));
         Set(entity, new DestroyOnLoad());
         Set(entity, new CanBeThrown());
         Set(entity, new CanInteract());
-        Set(entity, new CanWallJump());
+        Set(entity, new PlayerAnimationSet(SpriteAnimations.Skeleton_Idle, SpriteAnimations.Skeleton_Walk, SpriteAnimations.Skeleton_Air, SpriteAnimations.Skeleton_Pivot));
+        // Set(entity, new CanWallJump());
         // CreateTextTest();
         // Set(entity, new ColorBlend(new MoonWorks.Graphics.Color(1f, 0f, 0f, 1f)));
         return entity;
@@ -221,6 +235,12 @@ internal class EntityManipulator : Manipulator
         Set(entity, new ChangeLevel(levelID));
         return entity;
     }
+    public Entity CreateTimedMessage<T>(T component, float time) where T : unmanaged
+    {
+        var entity = CreateEntity();
+        Set(entity, new AddAfterTime<T>(time, component));
+        return entity;
+    }
     public void CreateDeathScreen()
     {
         // create player sprite
@@ -254,6 +274,7 @@ internal class EntityManipulator : Manipulator
         // Set(background, new Depth(9));
         Set(background, new SpriteScale(1000));
         Set(background, new DestroyOnLoad());
+        Set(CreateEntity(), new PlayStaticSFX(StaticAudio.SF2_Defeat));
     }
     public Entity CreateSpriteText(string input, SpriteAnimationInfo info, int textSizeX, int textSizeY, int separationX, int separationY, int worldX, int worldY, int scale, bool centeredX, bool centeredY, bool dontDraw = false)
     {
@@ -264,7 +285,7 @@ internal class EntityManipulator : Manipulator
 
         if (dontDraw)
         {
-            Set(parent, new AdvanceCharSpeed(0.1f));
+            Set(parent, new AdvanceCharSpeed(0.06f));
             Set(parent, new AdvanceCharCount(1f));
         }
         int x = 0, y = 0, maxLength = 0;

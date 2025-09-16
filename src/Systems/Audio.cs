@@ -43,7 +43,7 @@ public class Audio : MoonTools.ECS.System
         // Set(CreateEntity(), new MusicVolume(saveData.MusicVolume));
 
         AudioDevice = audioDevice;
-        SFXFilter = FilterBuilder.Include<PlayOnce>().Build();
+        SFXFilter = FilterBuilder.Include<PlayStaticSFX>().Build();
         // PlaySongFilter = FilterBuilder.Include<Song>().Include<SongChanged>().Build();
 
         var songEntity = CreateEntity();
@@ -99,20 +99,28 @@ public class Audio : MoonTools.ECS.System
 
         foreach (var entity in SFXFilter.Entities)
         {
-            var voice = GetVoice();
-            var buffer = StaticAudio.Lookup(Get<PlayOnce>(entity).AudioID);
-            voice.Reset();
-            // voice.SetVolume(Easing.InExpo(GetSingleton<SFXVolume>().Value));
-            voice.Submit(buffer);
-            voice.Play();
-            if (Get<PlayOnce>(entity).RandomizePitch)
-            {
-                voice.SetPitch(Rando.Range(-0.1f, 0.1f));
-            }
-            Playing.Enqueue(voice);
-
-
+            var sfxData = Get<PlayStaticSFX>(entity);
+            PlayStaticSound(
+                sfxData.Sound,
+                sfxData.Volume,
+                sfxData.Pitch,
+                sfxData.Pan
+            );
             Destroy(entity);
         }
+    }
+    private void PlayStaticSound(
+    AudioBuffer sound,
+    float volume,
+    float pitch,
+    float pan
+    )
+    {
+        SourceVoice voice = AudioDevice.Obtain<TransientVoice>(sound.Format);
+        voice.SetVolume(volume);
+        voice.SetPitch(pitch);
+        voice.SetPan(pan);
+        voice.Submit(sound);
+        voice.Play();
     }
 }
