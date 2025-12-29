@@ -59,4 +59,22 @@ public static class MathUtils
         Vector2 changeVector = SafeNormalize(target - current) * amount;
         return new Vector2(MoveTowards(current.X, target.X, changeVector.X), MoveTowards(current.Y, target.Y, changeVector.Y));
     }
+    public static float DistanceFromLine(Vector2 angle, Vector2 origin, Vector2 target, float length)
+    {
+        float a = angle.X;
+        float b = angle.Y;
+        float c = 0;
+        target -= origin;
+        if (a == 0 && b == 0) return 0;
+
+        return MathF.Abs(a * target.X + b * target.Y) / MathF.Sqrt(a * a + b * b);
+    }
+    public static float Deg2Rad(float degrees)
+    {
+        return MathF.PI * degrees / 180f;
+    }
+    public static float Rad2Deg(float radians)
+    {
+        return 180f * radians / MathF.PI;
+    }
 }

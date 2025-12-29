@@ -102,21 +102,23 @@ public class Renderer : MoonTools.ECS.Renderer
         {
 
             ArtSpriteBatch.Start();
-
-            foreach (var entity in RectangleFilter.Entities)
+            if (false)
             {
-                var position = Get<Position>(entity);
-                var rectangle = Get<Rectangle>(entity);
-                var orientation = Has<Orientation>(entity) ? Get<Orientation>(entity).Angle : 0.0f;
-                var color = Has<ColorBlend>(entity) ? Get<ColorBlend>(entity).Color : Color.Red;
-                var depth = -2f;
-                if (Has<Depth>(entity))
+                foreach (var entity in RectangleFilter.Entities)
                 {
-                    depth = -Get<Depth>(entity).Value;
-                }
+                    var position = Get<Position>(entity);
+                    var rectangle = Get<Rectangle>(entity);
+                    var orientation = Has<Orientation>(entity) ? Get<Orientation>(entity).Angle : 0.0f;
+                    var color = Has<ColorBlend>(entity) ? Get<ColorBlend>(entity).Color : Color.Red;
+                    var depth = -2f;
+                    if (Has<Depth>(entity))
+                    {
+                        depth = -Get<Depth>(entity).Value;
+                    }
 
-                var sprite = SpriteAnimations.Pixel.Frames[0];
-                ArtSpriteBatch.Add(new Vector3(position.X + rectangle.X, position.Y + rectangle.Y, depth), orientation, new Vector2(rectangle.Width, rectangle.Height), color, sprite.UV.LeftTop, sprite.UV.Dimensions);
+                    var sprite = SpriteAnimations.Pixel.Frames[0];
+                    ArtSpriteBatch.Add(new Vector3(position.X + rectangle.X, position.Y + rectangle.Y, depth), orientation, new Vector2(rectangle.Width, rectangle.Height), color, sprite.UV.LeftTop, sprite.UV.Dimensions);
+                }
             }
 
             foreach (var entity in SpriteAnimationFilter.Entities)

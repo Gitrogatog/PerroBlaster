@@ -21,6 +21,7 @@ public static class Globals
 {
     public static int PlayerX;
     public static int PlayerY;
+    public static bool ShouldExistPlayer = true;
 }
 
 public static class FontSizes
@@ -44,10 +45,11 @@ public static class Time
 
 public static class MoveConsts
 {
-    public static float MAX_FALL_SPEED => 250f;
+    public static float MAX_FALL_SPEED => 350;
     public static float MIN_JUMP_POWER;
     public static float MAX_JUMP_POWER => 250;
-    public static float GRAVITY => 600;
+    public static float RISE_GRAVITY => 850;
+    public static float GRAVITY => 950;
     public static float MOVE_SPEED => 105;
     public static float CANCEL_JUMP_SPEED => 75;
     public static float GROUND_MOVE_SPEED;
@@ -63,6 +65,7 @@ public static class MoveConsts
     public static float WALL_GRAVITY => 200;
     public static float WALL_MAX_FALL_SPEED => 70f;
     public static float WALL_STICKINESS => 0.3f;
+    public static float BUNNY_DASH_SPEED => 330;
 
     public static Vector2 SCREEN_SIZE = new Vector2(640, 360);
     public static Vector2 ROOM_SIZE = new Vector2(20, 20);

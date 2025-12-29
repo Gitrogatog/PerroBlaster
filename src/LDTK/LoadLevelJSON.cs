@@ -4,11 +4,14 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Dynamic;
 using System.IO;
+using System.Numerics;
 using ldtk;
 using MoonTools.ECS;
+using MoonWorks.Graphics;
 using MyGame.Components;
 using MyGame.Content;
 using MyGame.Spawn;
+using MyGame.Utility;
 public class LoadLevelJSON
 {
     MoonTools.ECS.World World;
@@ -17,6 +20,9 @@ public class LoadLevelJSON
     Vector2I tileSize;
     int tileMult;
     Dictionary<(int, int), (int, int)> tileSliceDict = new Dictionary<(int, int), (int, int)>(300);
+    Dictionary<(int, int), Color> colorsDict = new Dictionary<(int, int), Color>(300);
+    Dictionary<string, Dictionary<int, Color>> intGridToColorDict = new Dictionary<string, Dictionary<int, Color>>();
+
 
     public LoadLevelJSON(MoonTools.ECS.World world, Vector2I tileSize, int tileMult)
     {
@@ -35,6 +41,7 @@ public class LoadLevelJSON
         string contents = File.ReadAllText(filePath);
 
         jsonObject = LdtkJson.FromJson(contents);
+        PreloadColorsFromDefs();
         Console.WriteLine($"READING JSON at {Path.GetFullPath(filePath)} : levels count: {jsonObject.Levels.Length}");
         // InitTilemap();
 
@@ -55,48 +62,7 @@ public class LoadLevelJSON
         {
 
         }
-        tileSliceDict.Clear();
-        LayerInstance layerInstance = GetLayerInstanceByName(level, "IntGrid");
-        long[] intGrid = layerInstance.IntGridCsv;
-        (int xTiles, int yTiles) = ((int)layerInstance.CWid, (int)layerInstance.CHei);
-        layerInstance = GetLayerInstanceByName(level, "AutoLayer");
-        foreach (var tile in layerInstance.AutoLayerTiles)
-        {
-            (int x, int y) = ((int)tile.Px[0], (int)tile.Px[1]); // position of tile in the ldtk world grid
-            (int spriteX, int spriteY) = ((int)tile.Src[0], (int)tile.Src[1]);
-            tileSliceDict[(x, y)] = (spriteX, spriteY);
-            // EntityPrefabs.CreateTile(x * tileMult, y * tileMult);
-        }
-        layerInstance = GetLayerInstanceByName(level, "Ground");
-        foreach (var tile in layerInstance.GridTiles)
-        {
-            (int x, int y) = ((int)tile.Px[0], (int)tile.Px[1]); // position of tile in the ldtk world grid
-            (int spriteX, int spriteY) = ((int)tile.Src[0], (int)tile.Src[1]);
-            tileSliceDict[(x, y)] = (spriteX, spriteY);
-        }
-        Sprite tileGridSprite = SpriteAnimations.Tiles.Frames[0];
-        foreach ((int worldX, int worldY) in tileSliceDict.Keys)
-        {
-            (int spriteX, int spriteY) = tileSliceDict[(worldX, worldY)];
-            int gridIndex = (worldY / tileSize.Y * xTiles) + worldX / tileSize.X;
-            if (gridIndex >= 0 && gridIndex < intGrid.Length)
-            {
-                TileType tileType = (int)intGrid[gridIndex] switch
-                {
-                    1 => TileType.Solid,
-                    2 => TileType.Spike,
-                    3 => TileType.Throwable,
-                    4 => TileType.Invisible,
-                    _ => TileType.Fake
-                };
-                Sprite tileSprite = tileGridSprite.Slice(spriteX, spriteY, tileSize.X, tileSize.Y);
-                EntityPrefabs.CreateTile(worldX * tileMult, worldY * tileMult, tileSprite, tileType);
-            }
-        }
-        // LoadSpriteTilesFromTileLayer(layerInstance);
-        // LoadTilesFromIntGrid(layerInstance, new Vector2I((int)level.WorldX, (int)level.WorldY) / tileSize);
-
-        layerInstance = GetLayerInstanceByName(level, "Entities");
+        LayerInstance layerInstance = GetLayerInstanceByName(level, "Entities");
         foreach (EntityInstance entityInstance in layerInstance.EntityInstances)
         {
             ReadEntity(entityInstance);
@@ -113,13 +79,26 @@ public class LoadLevelJSON
         }
         return null;
     }
+    LayerDefinition GetLayerDefByName(string name)
+    {
+        foreach (var layerDef in jsonObject.Defs.Layers)
+        {
+            if (layerDef.Identifier == name)
+            {
+                return layerDef;
+            }
+        }
+        return null;
+    }
 
     void ReadEntity(EntityInstance entityInstance)
     {
         Vector2I position = new Vector2I((int)entityInstance.Px[0] * tileMult, (int)entityInstance.Px[1] * tileMult); //+ tileSize / 2;
         Console.WriteLine($"read entity at {position}");
+        dynamic field;
         switch (entityInstance.Identifier)
         {
+
             case "Player":
                 {
                     EntityPrefabs.CreatePlayer(position.X, position.Y - (tileSize.Y * tileMult + 6));
@@ -127,10 +106,78 @@ public class LoadLevelJSON
                 }
             case "Bunny":
                 {
-                    Cardinal direction = ConvertEnum.ToCardinal(entityInstance.FieldInstances[0].Value);
-                    EntityPrefabs.CreateBunny(position.X, position.Y + 2, direction);
+
                     break;
                 }
+            case "Ambush":
+                {
+                    break;
+                }
+        }
+    }
+    dynamic GetFieldFromName(EntityInstance entity, string name)
+    {
+        foreach (FieldInstance fieldInstance in entity.FieldInstances)
+        {
+            if (fieldInstance.Identifier == name)
+            {
+                return fieldInstance.Value;
+            }
+        }
+        Console.WriteLine($"Couldn't find field instance of name {name}");
+        return null;
+    }
+    bool TryGetFieldFromName(EntityInstance entity, string name, out dynamic value)
+    {
+        foreach (FieldInstance fieldInstance in entity.FieldInstances)
+        {
+            if (fieldInstance.Identifier == name)
+            {
+                value = fieldInstance.Value;
+                return true;
+            }
+        }
+        value = null;
+        return false;
+    }
+    void PreloadColorsFromDefs()
+    {
+        foreach (var layerDef in jsonObject.Defs.Layers)
+        {
+            if (layerDef.Type != "IntGrid")
+            {
+                continue;
+            }
+            var colorArr = layerDef.IntGridValues;
+            Dictionary<int, Color> idToColor = new Dictionary<int, Color>(colorArr.Length);
+            foreach (var entry in colorArr)
+            {
+                idToColor[(int)entry.Value] = ColorUtils.HexStringToColor(entry.Color.Substring(1));
+                Console.WriteLine(idToColor[(int)entry.Value]);
+            }
+            intGridToColorDict[layerDef.Identifier] = idToColor;
+        }
+
+    }
+    void CreateColorSpritesFromIntgridLayer(Level level, string name)
+    {
+        LayerInstance layer = GetLayerInstanceByName(level, name);
+        var idToColor = intGridToColorDict[name];
+        long[] intGrid = layer.IntGridCsv;
+        (int xTiles, int yTiles) = ((int)layer.CWid, (int)layer.CHei);
+        int sizeOfTile = (int)layer.GridSize;
+        for (int i = 0; i < intGrid.Length; i++)
+        {
+            int gridContent = (int)intGrid[i];
+            if (gridContent == 0) continue;
+            (int tileX, int tileY) = (i % xTiles, i / xTiles);
+            var entity = World.CreateEntity();
+            World.Set(entity, new Position((tileX - 0.5f) * tileSize.X * tileMult, (tileY - 0.5f) * tileSize.Y * tileMult));
+            World.Set(entity, new ColorBlend(idToColor[gridContent]));
+            World.Set(entity, new SpriteScale(tileSize * tileMult));
+            World.Set(entity, SpriteAnimations.Pixel.Frames[0]);
+            World.Set(entity, new Depth(10));
+            World.Set(entity, new DestroyOnLoad());
         }
     }
     void LoadSpriteTilesFromTileLayer(LayerInstance layerInstance) // loads in the tile sprite data from the "Visuals" tile layer
@@ -139,15 +186,6 @@ public class LoadLevelJSON
         {
             Vector2I spritePosOnSheet = new Vector2I((int)tile.Src[0], (int)tile.Src[1]);
             Vector2I tilePos = new Vector2I((int)tile.Px[0] / tileSize.X, (int)tile.Px[1] / tileSize.Y);
-            // int tileID = tilemap.GetIndex((int)tile.Px[0] / tileSize.X, (int)tile.Px[1] / tileSize.Y);
-            // tilemap.Sprites[tileID] = spritePosOnSheet;
-            // tilemap.Tiles[tileID] = TileType.Empty;
-
-            // load tile colliders from tile layer
-            // int id = (int)tile.T;
-            // Vector2I atlasTilePos = tileIDToSlopeTile[id];
-            // gdTilemap.SetCell(0, tilePos, slopeTileSourceID, atlasTilePos);
-
         }
     }
 }

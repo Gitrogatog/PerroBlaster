@@ -29,7 +29,7 @@ public class TimerSystem : MoonTools.ECS.System
                 {
                     ThingType thing = Get<SpawnOnTimerEnd>(entity).Thing;
                     Position pos = Get<Position>(entity);
-                    EntityPrefabs.CreateThing(thing, pos.X, pos.Y, entity);
+                    // EntityPrefabs.CreateThing(thing, pos.X, pos.Y, entity);
                 }
                 if (Has<CreateAnimationEntityOnTimerEnd>(entity))
                 {

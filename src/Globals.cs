@@ -13,7 +13,3 @@ public static class GlobalInput
     public static InputState Current;
     public static InputState Prev;
 }
-public static class GlobalState
-{
-    public static bool ShouldExistPlayer = true;
-}

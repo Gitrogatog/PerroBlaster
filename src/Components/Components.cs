@@ -85,6 +85,8 @@ public readonly record struct CanHold();
 public readonly record struct CanBeThrown();
 public readonly record struct CanPerformThrow();
 public readonly record struct Kissable();
+public readonly record struct CanAirJump(float Force, int Max);
+public readonly record struct RemainingAirJumps(int Value);
 public readonly record struct DamageOnContact();
 public readonly record struct TakeDamageOnContact();
 public readonly record struct IgnoreCollision();
@@ -115,6 +117,28 @@ public readonly record struct PlayStaticSFX(
 {
     public AudioBuffer Sound => StaticAudio.Lookup(StaticSoundID);
 }
+// public readonly record struct PlayContinuousSFX(
+//     StaticSoundID StaticSoundID,
+//     SoundCategory Category = SoundCategory.Generic,
+//     float Volume = 1,
+//     float Pitch = 0,
+//     float Pan = 0
+// )
+// {
+//     public AudioBuffer Sound => StaticAudio.Lookup(StaticSoundID);
+// }
+public readonly record struct PlayContinuousSFX(StaticSoundID StaticSoundID,
+        SoundCategory Category = SoundCategory.Generic,
+        float Volume = 1,
+        float Pitch = 0,
+        float Pan = 0, int VoiceID = -1)
+{
+    public AudioBuffer Sound => StaticAudio.Lookup(StaticSoundID);
+    public PlayContinuousSFX SetID(int id)
+    {
+        return new PlayContinuousSFX(StaticSoundID, Category, Volume, Pitch, Pan, id);
+    }
+}
 public readonly record struct SetAnimation(SpriteAnimation Animation, bool ForceUpdate = false)
 {
     public SetAnimation(SpriteAnimationInfo animInfo, bool forceUpdate = false) : this(new SpriteAnimation(animInfo), forceUpdate) { }
@@ -127,11 +151,20 @@ public readonly record struct Grounded();
 public readonly record struct Gravity();
 public readonly record struct IntendedMove(float Value);
 public readonly record struct MoveSpeed(float Value);
+public readonly record struct GroundAirMoveSpeed(float Ground, float Air);
 public readonly record struct AttemptJumpThisFrame();
 public readonly record struct CanJump(float Value);
 public readonly record struct MaxSpeedJump(float Value);
 public readonly record struct BouncesOffWalls(float MinSpeed);
+public readonly record struct BouncesOffWallsConsistent(float MinSpeed, float BounceSpeed);
+public readonly record struct BounceOffWallsConsistent2(BouncesOffWallsConsistent LowSpeed, BouncesOffWallsConsistent HighSpeed);
+public readonly record struct MoveDir(Vector2 Value)
+{
+    public MoveDir(float x, float y) : this(new Vector2(x, y)) { }
+}
 public readonly record struct CollidesWithSolids();
+public readonly record struct AmbushPoint(int X, int Y, AmbushTrigger TriggerType);
+public readonly record struct SpawnOnAmbush(int X, int Y, ThingType Thing);
 public readonly record struct Player(int Index);
 public readonly record struct Orientation(float Angle);
 public readonly record struct CanInteract();

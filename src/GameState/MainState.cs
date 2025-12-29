@@ -73,16 +73,15 @@ public class MainState : GameState
             .Add(new TimerSystem(World))
             .Add(new Input(World, Game.Inputs, Game.MainWindow))
             .Add(new PlayerController(World))
-            .Add(new ProximityToPlayerSystem(World))
             .Add(new Motion(World))
             .Add(new Collision(World))
-            .Add(new ThrowSystem(World))
+            // .Add(new ThrowSystem(World))
             .Add(new OffsetSystem(World))
             .Add(new AnimationSystem(World))
             .Add(new SetSpriteAnimationSystem(World))
             .Add(new UpdateSpriteAnimationSystem(World))
             .Add(new AdvanceCharCountSystem(World))
-            .Add(new PlayerDeathSystem(World))
+            // .Add(new PlayerDeathSystem(World))
             .Add(new Audio(World, Game.AudioDevice))
             .Add(new DestroySystem<DestroyAtEndOfFrame>(World))
         ;
@@ -120,12 +119,20 @@ public class MainState : GameState
         loadSystem.Update(default);
         StartGame();
     }
+    void ReloadCurrentLevel()
+    {
+        StartGame(currentLevel);
+    }
     void RestartCurrentLevel()
     {
         ChangeLevel(currentLevel);
         // var textParent = EntityPrefabs.CreateSF2SpriteText("KKKK", 100, 100, 0, 0, true, true, 3);
     }
-
+    void StartGame(int level)
+    {
+        loadLevelJSON.ReadFile("ContentStatic/Data/levels.json");
+        ChangeLevel(level);
+    }
     void StartGame()
     {
         loadLevelJSON.ReadFile("ContentStatic/Data/levels.json");
@@ -135,7 +142,7 @@ public class MainState : GameState
     }
     void ChangeLevel(int level)
     {
-        GlobalState.ShouldExistPlayer = true;
+        Globals.ShouldExistPlayer = true;
         loadSystem.Update(default);
         loadLevelJSON.ReadLevel(level);
         currentLevel = level;
@@ -180,13 +187,6 @@ public class MainState : GameState
         {
             RestartCurrentLevel();
         }
-        else if (World.Some<DisplayDeathScreen>())
-        {
-            Console.WriteLine("display death screen!");
-            var cause = World.GetSingleton<DisplayDeathScreen>().CauseOfDeath;
-            loadSystem.Update(default);
-            EntityPrefabs.CreateDeathScreen(cause);
-        }
         else if (World.Some<DeathScreen>() && GlobalInput.Current.Shoot.IsPressed)
         {
             RestartCurrentLevel();
@@ -195,7 +195,7 @@ public class MainState : GameState
         updateGroup.Update(delta);
         if (GlobalInput.Current.Reload.IsPressed)
         {
-            Reload();
+            ReloadCurrentLevel();
         }
         else if (GlobalInput.Current.Refresh.IsPressed)
         {

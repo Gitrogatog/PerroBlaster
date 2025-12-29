@@ -9,6 +9,8 @@ public abstract class Manipulator : EntityComponentReader
 	protected Entity CreateEntity(string tag = "") => World.CreateEntity(tag);
 	protected void Tag(Entity entity, string tag) => World.Tag(entity, tag);
 	protected void Set<TComponent>(in Entity entity, in TComponent component) where TComponent : unmanaged => World.Set<TComponent>(entity, component);
+	protected void Set<TComponent>(in Entity entity) where TComponent : unmanaged => World.Set<TComponent>(entity, new TComponent());
+
 	protected void Remove<TComponent>(in Entity entity) where TComponent : unmanaged => World.Remove<TComponent>(entity);
 
 	protected void Relate<TRelationKind>(in Entity entityA, in Entity entityB, TRelationKind relationData) where TRelationKind : unmanaged => World.Relate(entityA, entityB, relationData);

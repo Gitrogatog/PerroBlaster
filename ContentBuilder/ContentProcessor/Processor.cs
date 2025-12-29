@@ -1033,6 +1033,7 @@ namespace MyGame.Content
             var initStrings = new List<string>();
             var loadStrings = new List<string>();
             var definitionStrings = new List<string>();
+            var sliceBuffersStrings = new List<string>();
 
             foreach (var jsonFile in staticAudioOutputDir.EnumerateFiles("*.json"))
             {
@@ -1040,6 +1041,7 @@ namespace MyGame.Content
                 initStrings.Add($"{name}.Init(audioDevice, Path.Combine(StaticAudioContentPath, \"{name}.wav\"), Path.Combine(StaticAudioContentPath, \"{name}.json\"));");
                 loadStrings.Add($"{name}.LoadAsync(asyncFileLoader);");
                 definitionStrings.Add($"public static StaticAudioPack {name} = new StaticAudioPack();");
+                sliceBuffersStrings.Add($"{name}.SliceBuffers();");
             }
 
             var staticAudioClassCode = $@"
@@ -1063,6 +1065,11 @@ namespace MyGame.Content
 		{{
 			{string.Join("\n\t\t\t", loadStrings)}
 		}}
+
+        public static void SliceBuffers()
+        {{
+            {string.Join("\n\t\t\t", sliceBuffersStrings)}
+        }}
 
 		{string.Join("\n\t\t", definitionStrings)}
 	}}

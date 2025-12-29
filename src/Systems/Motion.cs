@@ -6,6 +6,7 @@ using MyGame;
 using MyGame.Components;
 using MyGame.Content;
 using MyGame.Relations;
+using MyGame.Spawn;
 using MyGame.Utility;
 
 namespace MyGame.Systems;
@@ -118,10 +119,22 @@ public class Motion : MoonTools.ECS.System
 
         return position + movement;
     }
+    float GetMoveSpeed(Entity entity)
+    {
+        if (Has<MoveSpeed>(entity))
+        {
+            return Get<MoveSpeed>(entity).Value;
+        }
+        else if (Has<GroundAirMoveSpeed>(entity))
+        {
+            return Has<Grounded>(entity) ? Get<GroundAirMoveSpeed>(entity).Ground : Get<GroundAirMoveSpeed>(entity).Air;
+        }
+        return MoveConsts.MOVE_SPEED;
+    }
 
     public Vector2 CalcIntendedVelocity(Entity entity, Vector2 vel, float dt)
     {
-        float maxMoveSpeed = (Has<MoveSpeed>(entity) ? Get<MoveSpeed>(entity).Value : MoveConsts.MOVE_SPEED);
+        float maxMoveSpeed = GetMoveSpeed(entity);
         float intended = Get<IntendedMove>(entity).Value;
         float targetVelocity = intended * maxMoveSpeed;
         if (Has<CanPivot>(entity))
@@ -157,6 +170,7 @@ public class Motion : MoonTools.ECS.System
         if (Has<AccelParams>(entity))
         {
             float accel = Get<AccelParams>(entity).GetAccel(Has<Grounded>(entity), targetVelocity > 0 && vel.X < 0 || targetVelocity < 0 && vel.X > 0);
+            // if(targetVelocity != 0 && MathF.Sign(vel.X) == MathF.Sign(intended) && )
             vel.X = MathUtils.MoveTowards(vel.X, targetVelocity, accel * dt);
             // vel.X = MathUtils.LerpDecay(vel.X, targetVelocity, accel, dt);
         }
@@ -246,7 +260,7 @@ public class Motion : MoonTools.ECS.System
                             }
                             Remove<Grounded>(entity);
                             Set(entity, new IsJumping());
-                            Set(CreateEntity(), new PlayStaticSFX(StaticAudio.PickUp));
+                            EntityPrefabs.PlaySFX(StaticAudio.Mario_Jump);
                             Remove<IsPivoting>(entity);
                         }
                     }
@@ -258,8 +272,21 @@ public class Motion : MoonTools.ECS.System
                         vel.X = touchingRight ? -MoveConsts.WALLJUMP_SPEED_X : MoveConsts.WALLJUMP_SPEED_X;
                         Set(entity, new Facing(!touchingRight));
                         Set(entity, new IsJumping());
-                        Set(CreateEntity(), new PlayStaticSFX(StaticAudio.PickUp));
+                        Set(CreateEntity(), new PlayStaticSFX(StaticAudio.Mario_Jump));
                         Remove<CoyoteGrounded>(entity);
+                    }
+                    else if (Has<RemainingAirJumps>(entity))
+                    {
+                        int remainingJumps = Get<RemainingAirJumps>(entity).Value;
+                        if (remainingJumps > 0)
+                        {
+                            Set(entity, new RemainingAirJumps(remainingJumps - 1));
+                        }
+                        else
+                        {
+                            Remove<RemainingAirJumps>(entity);
+                        }
+                        vel.Y = -Get<CanAirJump>(entity).Force;
                     }
 
                     Remove<AttemptJumpThisFrame>(entity);
@@ -280,9 +307,11 @@ public class Motion : MoonTools.ECS.System
                 }
                 else
                 {
-                    bool isWallSliding = Has<CanWallJump>(entity) && Has<TouchingWall>(entity) && vel.Y >= 0;
-                    float grav = isWallSliding ? MoveConsts.WALL_GRAVITY : MoveConsts.GRAVITY; //Get<Gravity>(entity).Value;
-                    vel.Y = MathF.Min(vel.Y + grav * (float)delta.TotalSeconds, isWallSliding ? MoveConsts.WALL_MAX_FALL_SPEED : MoveConsts.MAX_FALL_SPEED);
+                    // bool isWallSliding = Has<CanWallJump>(entity) && Has<TouchingWall>(entity) && vel.Y >= 0;
+                    // float grav = isWallSliding ? MoveConsts.WALL_GRAVITY : MoveConsts.GRAVITY; //Get<Gravity>(entity).Value;
+                    // vel.Y = MathF.Min(vel.Y + grav * (float)delta.TotalSeconds, isWallSliding ? MoveConsts.WALL_MAX_FALL_SPEED : MoveConsts.MAX_FALL_SPEED);
+                    float grav = vel.Y < 0 ? MoveConsts.RISE_GRAVITY : MoveConsts.GRAVITY;
+                    vel.Y = MathF.Min(vel.Y + grav * (float)delta.TotalSeconds, MoveConsts.MAX_FALL_SPEED);
                 }
             }
 
@@ -366,17 +395,31 @@ public class Motion : MoonTools.ECS.System
             if (Has<Velocity>(entity))
             {
                 var velocity = Get<Velocity>(entity).Value;
+                var prevVelocity = velocity;
                 if (leftCollided != SolidCheck.Miss)
                 {
                     if (velocity.X < 0)
                     {
                         if (Has<BouncesOffWalls>(entity) && -Get<BouncesOffWalls>(entity).MinSpeed >= velocity.X)
                         {
-                            Set(entity, new Velocity(-velocity.X, velocity.Y));
+                            EntityPrefabs.PlaySFX(StaticAudio.Mario_Bump);
+                            // Set(entity, new Velocity(-velocity.X, velocity.Y));
+                            velocity.X = -velocity.X;
+                        }
+                        else if (World.TryGet(entity, out BouncesOffWallsConsistent bounceData) && -bounceData.MinSpeed >= velocity.X)
+                        {
+                            EntityPrefabs.PlaySFX(StaticAudio.Mario_Bump);
+                            velocity.X = bounceData.BounceSpeed;
+                            // velocity.Y += -100;
+                            // if (Has<Grounded>(entity))
+                            // {
+                            //     velocity.Y = -100;
+                            //     Remove<Grounded>(entity);
+                            // }
                         }
                         else
                         {
-                            Set(entity, new Velocity(0, velocity.Y));
+                            velocity.X = 0;
                         }
                     }
                     if (Has<Facing>(entity) && !Get<Facing>(entity).Right)
@@ -390,11 +433,24 @@ public class Motion : MoonTools.ECS.System
                     {
                         if (Has<BouncesOffWalls>(entity) && Get<BouncesOffWalls>(entity).MinSpeed <= velocity.X)
                         {
-                            Set(entity, new Velocity(-velocity.X, velocity.Y));
+                            EntityPrefabs.PlaySFX(StaticAudio.Mario_Bump);
+                            // Set(entity, new Velocity(-velocity.X, velocity.Y));
+                            velocity.X = -velocity.X;
+
+                        }
+                        else if (World.TryGet(entity, out BouncesOffWallsConsistent bounceData) && bounceData.MinSpeed <= velocity.X)
+                        {
+                            EntityPrefabs.PlaySFX(StaticAudio.Mario_Bump);
+                            velocity.X = -bounceData.BounceSpeed;
+                            // if (Has<Grounded>(entity))
+                            // {
+                            //     velocity.Y = -100;
+                            //     Remove<Grounded>(entity);
+                            // }
                         }
                         else
                         {
-                            Set(entity, new Velocity(0, velocity.Y));
+                            velocity.X = 0;
                         }
 
                     }
@@ -407,17 +463,26 @@ public class Motion : MoonTools.ECS.System
                 {
                     if (velocity.Y < 0)
                     {
-                        Set(entity, new Velocity(velocity.X, 0));
+                        velocity.Y = 0;
                     }
                 }
                 if (downCollided != SolidCheck.Miss && Has<Gravity>(entity) && velocity.Y >= -1)
                 {
-                    Set(entity, new Grounded());
+
                     Remove<IsJumping>(entity);
+                    Set(entity, new Grounded());
                     if (Has<CanCoyoteJump>(entity))
                     {
                         Set(entity, new CoyoteGrounded());
                     }
+                    if (Has<CanAirJump>(entity))
+                    {
+                        Set(entity, new RemainingAirJumps(Get<CanAirJump>(entity).Max));
+                    }
+                }
+                if (prevVelocity != velocity)
+                {
+                    Set(entity, new Velocity(velocity));
                 }
             }
         }
