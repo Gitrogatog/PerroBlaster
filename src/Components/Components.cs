@@ -1,4 +1,5 @@
 using System.Numerics;
+using MoonTools.ECS;
 using MoonWorks.Audio;
 using MoonWorks.Graphics;
 using MyGame.Content;
@@ -6,6 +7,29 @@ using MyGame.Data;
 
 namespace MyGame.Components;
 
+public readonly record struct PlayMusic(StreamingSoundID ID);
+public readonly record struct StopMusic(int ID);
+public readonly record struct StartMusic(int ID);
+public readonly record struct SetMusicVolume(float Value, int VoiceID);
+public readonly record struct StartMusicAndSetVolume(float Value, int VoiceID);
+public readonly record struct PlaySFXOnDamage(StaticSoundID Sound);
+public readonly record struct ChangeGameScene(GameSceneType Scene);
+public readonly record struct Collision(Entity Effector, Entity Effected);
+public readonly record struct EntityCollisionHash(Entity Entity, EffectorFlags EffectorFlags, EffectedFlags EffectedFlags);
+public readonly record struct CollisionFlags(EffectorFlags EffectorFlags, EffectedFlags EffectedFlags);
+public readonly record struct EnemySpawnPoint(int X, int Y, EnemyType EnemyType);
+public readonly record struct RectangleSpawnPoint(int X, int Y, int Width, int Height, RectThingType Type);
+public readonly record struct IsCheckpoint;
+public readonly record struct CollisionForceMoveForOneFrame(Vector2 Direction);
+public readonly record struct AddOnRoomEnter<T>(T Component) where T : unmanaged;
+public readonly record struct MustBeKilledToProgress;
+public readonly record struct DestroyOnCompleteRoom;
+public readonly record struct CanShoot(BulletPattern Pattern, float Cooldown);
+public readonly record struct FollowPath(int PathID, int TargetPointID);
+public readonly record struct InvertPath;
+public readonly record struct DestroyOnExitRoom;
+public readonly record struct DestroyWhenNoEnemies;
+public readonly record struct RoomID(int X, int Y);
 public readonly record struct TouchingMouse();
 public readonly record struct SliceAnim(SpriteAnimationInfoID Value);
 public readonly record struct Clickable(ClickableState Prev, ClickableState Current);
@@ -15,7 +39,29 @@ public readonly record struct Health(int Current, int Max)
 {
     public Health(int health) : this(health, health) { }
 }
+public readonly record struct OwnedByEnemy;
+public readonly record struct OwnedByPlayer;
 public readonly record struct IsDead();
+public readonly record struct TookDamageThisFrame();
+public readonly record struct TookDamageLastFrame();
+public readonly record struct CanBeThrown;
+public readonly record struct CanBeStuck;
+public readonly record struct CanBeRecalled;
+public readonly record struct CanBeHeld;
+public readonly record struct CantMoveTimer(float Time) : TimedComponent<CantMoveTimer>
+{
+    public CantMoveTimer Update(float t) => new CantMoveTimer(t);
+}
+public readonly record struct CantShootTimer(float Time) : TimedComponent<CantShootTimer>
+{
+    public CantShootTimer Update(float t) => new CantShootTimer(t);
+}
+
+public readonly record struct ReturnToPlayerWhenTouched;
+public readonly record struct MoveTowardPlayer;
+public readonly record struct MoveToPosition(Position Position);
+public readonly record struct AimAtPlayer;
+public readonly record struct IsAxe();
 // public readonly record struct ApplyDamage(DamageType Type, int Amount);
 // public readonly record struct ApplyStatus(StatusType Type, int Value);
 // public readonly record struct ApplyHeal(int Amount);
@@ -24,29 +70,52 @@ public readonly record struct PressedThisFrame();
 public readonly record struct SelectTargetOnClick();
 public readonly record struct DestroyOnMessage<T>() where T : unmanaged;
 public readonly record struct DestroyAtEndOfFrame();
-// public readonly record struct Moveset(int ID);
-// public readonly record struct SkillMoveset(int ID);
+public readonly record struct DestroyAtStartOfFrame();
+public readonly record struct LockCamera(int X, int Y);
+public readonly record struct CameraFollow();
+public readonly record struct FollowCameraWithOffset(int X, int Y);
+public readonly record struct SpinOffset(float Distance, float Speed, float Progress);
+public readonly record struct CreateHealthUI(int X, int Y);
+public readonly record struct DisplayHealthUI(int X, int Y);
+public readonly record struct RequireParent<T>() where T : unmanaged;
+public readonly record struct RequireChild<T>() where T : unmanaged;
 public readonly record struct UIBoxContainer(int MaxPerLine, int XOffset, int YOffset, bool ExpandVertical);
 public readonly record struct UpdateUIThisFrame();
-// public readonly record struct 
+public readonly record struct Cursor();
+public readonly record struct InvincibleOnDamage(float Time);
+public readonly record struct ReturnToCheckpoint;
+public readonly record struct ColorOverlayTimer(Color Color, float Time) : TimedComponent<ColorOverlayTimer>
+{
+    public ColorOverlayTimer Update(float t) => new ColorOverlayTimer(Color, t);
+}
+public readonly record struct Rotation(float Value);
+public readonly record struct RotateSpeed(float Value);
+public readonly record struct RotateSpriteToAimAngle;
+public readonly record struct AimAngle(Vector2 Angle) {
+    public AimAngle(float X, float Y) : this(new Vector2(X, Y)) {}
+}
 
-
-public readonly record struct Rectangle(int X, int Y, int Width, int Height)
+public readonly record struct Rectangle(int X, int Y, int Width, int Height, EffectorFlags EffectorFlags, EffectedFlags EffectedFlags)
 {
     public int Left => X;
     public int Right => X + Width;
     public int Top => Y;
     public int Bottom => Y + Height;
 
-    public Rectangle(int Width, int Height) : this(-Width / 2, -Height / 2, Width, Height) { }
+    public Rectangle(int Width, int Height, EffectorFlags EffectorFlags, EffectedFlags EffectedFlags) : this(-Width / 2, -Height / 2, Width, Height, EffectorFlags, EffectedFlags) { }
 
     public bool Intersects(Rectangle other)
     {
         return
+           ((int)EffectorFlags & (int)other.EffectedFlags) != 0 &&
             other.Left < Right &&
             Left < other.Right &&
             other.Top < Bottom &&
             Top < other.Bottom;
+    }
+
+    public static bool TestOverlap(Rectangle a, Rectangle b){
+        return b.Left < a.Right && a.Left < b.Right && b.Top < a.Bottom && a.Top < b.Bottom;
     }
 
     public static Rectangle Union(Rectangle a, Rectangle b)
@@ -57,7 +126,9 @@ public readonly record struct Rectangle(int X, int Y, int Width, int Height)
             x,
             y,
             int.Max(a.Right, b.Right) - x,
-            int.Max(a.Bottom, b.Bottom) - y
+            int.Max(a.Bottom, b.Bottom) - y,
+            a.EffectorFlags,
+            a.EffectedFlags
         );
     }
 
@@ -67,12 +138,12 @@ public readonly record struct Rectangle(int X, int Y, int Width, int Height)
             X - horizontal,
             Y - vertical,
             Width + horizontal * 2,
-            Height + vertical * 2
+            Height + vertical * 2,
+            EffectorFlags,
+            EffectedFlags
         );
     }
 }
-public readonly record struct IsJumping();
-public readonly record struct CanWallJump();
 public readonly record struct TouchingWall(bool Right);
 public readonly record struct ShouldPerformReset();
 public readonly record struct SpawnOnTimerEnd(ThingType Thing);
@@ -80,22 +151,14 @@ public readonly record struct CauseOfDeath(ThingType Thing);
 public readonly record struct DeathScreen();
 public readonly record struct PreventInput();
 public readonly record struct DestroyOnLoad();
-public readonly record struct CanBeHeld();
-public readonly record struct CanHold();
-public readonly record struct CanBeThrown();
-public readonly record struct CanPerformThrow();
-public readonly record struct Kissable();
-public readonly record struct CanAirJump(float Force, int Max);
-public readonly record struct RemainingAirJumps(int Value);
-public readonly record struct DamageOnContact();
+public readonly record struct DestroyOnSceneChange();
+public readonly record struct DestroyOnPlayerRespawn;
+public readonly record struct DamageOnContact;
+public readonly record struct DestroyOnContact;
 public readonly record struct TakeDamageOnContact();
+public readonly record struct DontRepeatDamageUntilStateChange;
 public readonly record struct IgnoreCollision();
 public readonly record struct ChangeLevel(int LevelID);
-public readonly record struct CanCoyoteJump();
-public readonly record struct CoyoteGrounded();
-public readonly record struct CanPivot(float Decel, float MinSpeedToPivot);
-public readonly record struct IsPivoting();
-public readonly record struct DisplayDeathScreen(ThingType CauseOfDeath);
 public readonly record struct AddAfterTime<T>(float Time, T Component) : TimedComponent<AddAfterTime<T>> where T : unmanaged
 {
     public AddAfterTime<T> Update(float t)
@@ -103,10 +166,11 @@ public readonly record struct AddAfterTime<T>(float Time, T Component) : TimedCo
         return new AddAfterTime<T>(t, Component);
     }
 }
-public readonly record struct AccelParams(float groundAccel, float groundTurnAccel, float airAccel, float airTurnAccel)
-{
-    public float GetAccel(bool isGrounded, bool isTurning) => isGrounded ? (isTurning ? groundTurnAccel : groundAccel) : (isTurning ? airTurnAccel : airAccel);
-}
+// public readonly record struct AccelParams(float groundAccel, float groundTurnAccel, float airAccel, float airTurnAccel)
+// {
+//     public float GetAccel(bool isGrounded, bool isTurning) => isGrounded ? (isTurning ? groundTurnAccel : groundAccel) : (isTurning ? airTurnAccel : airAccel);
+// }
+public readonly record struct AccelParams(float Value);
 public readonly record struct PlayStaticSFX(
     StaticSoundID StaticSoundID,
     SoundCategory Category = SoundCategory.Generic,
@@ -149,7 +213,11 @@ public readonly record struct TextSpriteParent();
 public readonly record struct AdvanceCharSpeed(float TimePerCharacter);
 public readonly record struct Grounded();
 public readonly record struct Gravity();
-public readonly record struct IntendedMove(float Value);
+public readonly record struct IntendedMove(Vector2 Value) {
+    public IntendedMove(float X, float Y) : this(new Vector2(X, Y)) {}
+}
+public readonly record struct IntendedMoveOneFrame(Vector2 Value);
+public readonly record struct BecomeSolidWhenNotColliding;
 public readonly record struct MoveSpeed(float Value);
 public readonly record struct GroundAirMoveSpeed(float Ground, float Air);
 public readonly record struct AttemptJumpThisFrame();
@@ -200,11 +268,8 @@ public readonly record struct DisplayScore(int Value);
 public readonly record struct Price(float Value);
 public readonly record struct TickerText(float Width);
 public readonly record struct ColorBlend(Color Color);
-public readonly record struct CanFillOrders();
-public readonly record struct CanGiveOrders();
-public readonly record struct IsOrder();
-
-public readonly record struct ColorSpeed(float RedSpeed, float GreenSpeed, float BlueSpeed);
+public readonly record struct ColorOverlay(Color Color);
+public readonly record struct ClearColor(Color Color);
 
 public readonly record struct Depth(float Value);
 public readonly record struct DrawAsRectangle();
@@ -235,16 +300,9 @@ public readonly record struct ForceIntegerMovement();
 public readonly record struct MaxSpeed(float Value);
 
 public readonly record struct AdjustFramerateToSpeed();
-public readonly record struct FunnyRunTimer(float Time); //Scooby doo style quick run when starting to move
-public readonly record struct CanFunnyRun();
-
+public readonly record struct FunnyRunTimer(float Time); //Scooby doo style quick run when starting to move 
 public readonly record struct LastDirection(System.Numerics.Vector2 Direction);
 public readonly record struct SlowDownAnimation(int BaseSpeed, int step);
-
-public readonly record struct IsPopupBox(); // jank because we cant check relation type count
-public readonly record struct CanSpawn(int Width, int Height);
-public readonly record struct FallSpeed(float Speed);
-public readonly record struct DestroyAtScreenBottom();
 
 public readonly record struct IsScoreScreen(); // sorry
 public readonly record struct GameInProgress(); // yaaargh
@@ -260,23 +318,12 @@ public readonly record struct DirectionalSprites(
     SpriteAnimationInfoID UpLeft
     );
 
-public readonly record struct CanTalk();
-public readonly record struct DontSpawnNPCs();
-public readonly record struct StoreExit();
 public readonly record struct AccelerateToPosition(Position Target, float Acceleration, float MotionDampFactor);
 public readonly record struct DestroyAtGameEnd();
-
-public readonly record struct CanBeStolenFrom();
-public readonly record struct CanStealProducts();
-public readonly record struct CanTargetProductSpawner();
-public readonly record struct DestroyWhenOutOfBounds();
-
-public readonly record struct WaitingForProductRestock();
-public readonly record struct DestroyForDebugTestReasons();
 public readonly record struct ColorFlicker(int ElapsedFrames, Color Color);
 public readonly record struct MotionDamp(float Damping);
 public readonly record struct SpriteScale(System.Numerics.Vector2 Scale)
 {
-    public SpriteScale(int scale) : this(new Vector2(scale, scale)) { }
+    public SpriteScale(float scale) : this(new Vector2(scale, scale)) { }
 }
 public readonly record struct LastValue(int value);

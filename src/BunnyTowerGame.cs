@@ -15,11 +15,6 @@ public class CyclesGame : Game
     LoadState LoadState;
     MainState TestUIState;
     private string ShaderContentPath = Path.Combine("ContentBuilder", "ContentBuilderUI", "Content", "Shaders");
-    // LogoState LogoState;
-    // CreditsState CreditsState;
-    // GameplayState GameplayState;
-    // TitleState TitleState;
-    // HowToPlayState HowToPlayState;
 
     GameState CurrentState;
 
@@ -38,15 +33,6 @@ public class CyclesGame : Game
         StreamingAudio.Init(AudioDevice);
         Fonts.LoadAll(GraphicsDevice, RootTitleStorage);
 
-        // CreditsState = new CreditsState(this, TitleState);
-        // LogoState = new LogoState(this, CreditsState, TitleState);
-        // TitleState = new TitleState(this, LogoState, HowToPlayState);
-        // LoadState = new LoadState(this, LogoState);
-        // CreditsState.SetTransitionState(TitleState); // i hate this
-
-        // GameplayState = new GameplayState(this, TitleState);
-        // HowToPlayState = new HowToPlayState(this, GameplayState);
-        // TitleState.SetTransitionStateB(HowToPlayState);
         TestUIState = new MainState(this, null);
         LoadState = new LoadState(this, TestUIState);
         SetState(LoadState);

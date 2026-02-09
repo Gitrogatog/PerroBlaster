@@ -57,7 +57,8 @@ public static class MathUtils
             return current;
         }
         Vector2 changeVector = SafeNormalize(target - current) * amount;
-        return new Vector2(MoveTowards(current.X, target.X, changeVector.X), MoveTowards(current.Y, target.Y, changeVector.Y));
+        return new Vector2(MoveTowards(current.X, target.X, Math.Abs(changeVector.X)), MoveTowards(current.Y, target.Y, Math.Abs(changeVector.Y)));
+        // return new Vector2(MoveTowards(current.X, target.X, changeVector.X), MoveTowards(current.Y, target.Y, changeVector.Y));
     }
     public static float DistanceFromLine(Vector2 angle, Vector2 origin, Vector2 target, float length)
     {
@@ -77,4 +78,9 @@ public static class MathUtils
     {
         return 180f * radians / MathF.PI;
     }
+    public static float Frac(float value)
+    {
+        return value - (float)Math.Truncate(value);
+    }
+    public static float Frac01(float value) => value - MathF.Floor(value);
 }

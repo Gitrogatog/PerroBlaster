@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using Microsoft.VisualBasic;
 using MoonTools.ECS;
@@ -17,19 +18,23 @@ public class Motion : MoonTools.ECS.System
     Filter InteractFilter;
     Filter SolidFilter;
     Filter CollidesWithSolidsFilter;
+    MoonTools.ECS.System OffsetSystem;
 
+    // SpatialHash<EntityCollisionHash> InteractSpatialHash = new SpatialHash<EntityCollisionHash>(0, 0, 1000, 1000, 32);
+    // SpatialHashWithFlags InteractSpatialHash = new SpatialHashWithFlags(0, 0, 1000, 1000, 32);
     SpatialHash<Entity> InteractSpatialHash = new SpatialHash<Entity>(0, 0, 1000, 1000, 32);
     SpatialHash<Entity> SolidSpatialHash = new SpatialHash<Entity>(0, 0, 1000, 1000, 32);
-
     public Motion(World world) : base(world)
     {
+        GlobalCollision.Init();
+        OffsetSystem = new OffsetSystem(world);
         VelocityFilter = FilterBuilder.Include<Position>().Include<Velocity>().Build();
         InteractFilter = FilterBuilder.Include<Position>().Include<Rectangle>().Include<CanInteract>().Exclude<IgnoreCollision>().Build();
         SolidFilter = FilterBuilder.Include<Position>().Include<Rectangle>().Include<Solid>().Exclude<IgnoreCollision>().Build();
         CollidesWithSolidsFilter = FilterBuilder.Include<Position>().Include<Rectangle>().Include<CollidesWithSolids>().Exclude<IgnoreCollision>().Build();
     }
 
-    void ClearCanBeHeldSpatialHash()
+    void ClearInteractSpatialHash()
     {
         InteractSpatialHash.Clear();
     }
@@ -41,7 +46,7 @@ public class Motion : MoonTools.ECS.System
 
     Rectangle GetWorldRect(Position p, Rectangle r)
     {
-        return new Rectangle(p.X + r.X, p.Y + r.Y, r.Width, r.Height);
+        return new Rectangle(p.X + r.X, p.Y + r.Y, r.Width, r.Height, r.EffectorFlags, r.EffectedFlags);
     }
 
     enum SolidCheck
@@ -51,7 +56,7 @@ public class Motion : MoonTools.ECS.System
 
     (Entity other, SolidCheck hit) CheckSolidCollision(Entity e, Rectangle rect)
     {
-        foreach (var (other, otherRect) in SolidSpatialHash.Retrieve(e, rect))
+        foreach ((var other, var otherRect) in SolidSpatialHash.Retrieve(e, rect))
         {
             if (rect.Intersects(otherRect))
             {
@@ -131,92 +136,57 @@ public class Motion : MoonTools.ECS.System
         }
         return MoveConsts.MOVE_SPEED;
     }
-
-    public Vector2 CalcIntendedVelocity(Entity entity, Vector2 vel, float dt)
+    public bool GetIntendedMove(Entity entity, Position p, out Vector2 intendedMove) {
+        if(Has<CantMoveTimer>(entity)) {
+            intendedMove = Vector2.Zero;
+            return true;
+        }
+        if(Has<IntendedMoveOneFrame>(entity)){
+            intendedMove = Get<IntendedMoveOneFrame>(entity).Value;
+            Remove<IntendedMoveOneFrame>(entity);
+            return true;
+        }
+        if(Has<IntendedMove>(entity)){
+            intendedMove = Get<IntendedMove>(entity).Value;
+            return true;
+        }
+        if(Has<MoveTowardPlayer>(entity)) {
+            intendedMove = MathUtils.SafeNormalize(new Vector2(Globals.PlayerX - p.X, Globals.PlayerY - p.Y));
+            return true;
+        }
+        if(Has<MoveToPosition>(entity)) {
+            intendedMove = MathUtils.SafeNormalize(Get<MoveToPosition>(entity).Position - p);
+            return true;
+        }
+        intendedMove = default;
+        return false;
+    }
+    public Vector2 CalcIntendedVelocity(Entity entity, Vector2 vel, Vector2 intended, float dt)
     {
         float maxMoveSpeed = GetMoveSpeed(entity);
-        float intended = Get<IntendedMove>(entity).Value;
-        float targetVelocity = intended * maxMoveSpeed;
-        if (Has<CanPivot>(entity))
+        // Vector2 intended = Get<IntendedMove>(entity).Value;
+        Vector2 targetVelocity = intended * maxMoveSpeed;
+        if (TryGet(entity, out AccelParams accel))
         {
-            (float decel, float pivotSpeed) = Get<CanPivot>(entity);
-            // start pivot vs continue pivot
-            bool didStartPivot = false;
-            bool intendedOppositeToVelocity = MathF.Sign(vel.X) != MathF.Sign(intended);
-
-            if (Math.Abs(vel.X) >= pivotSpeed && intendedOppositeToVelocity && Has<Grounded>(entity))
-            {
-                Set<IsPivoting>(entity);
-                didStartPivot = true;
-            }
-            if (didStartPivot || Has<IsPivoting>(entity))
-            {
-                if (!intendedOppositeToVelocity)
-                {
-                    Remove<IsPivoting>(entity);
-                }
-                else
-                {
-                    vel.X = MathUtils.MoveTowards(vel.X, 0, decel * dt);
-                    if (vel.X == 0)
-                    {
-                        Remove<IsPivoting>(entity);
-                        vel.X = targetVelocity;
-                    }
-                    return vel;
-                }
-            }
-        }
-        if (Has<AccelParams>(entity))
-        {
-            float accel = Get<AccelParams>(entity).GetAccel(Has<Grounded>(entity), targetVelocity > 0 && vel.X < 0 || targetVelocity < 0 && vel.X > 0);
+            // float accel = Get<AccelParams>(entity).GetAccel(Has<Grounded>(entity), targetVelocity > 0 && vel.X < 0 || targetVelocity < 0 && vel.X > 0);
             // if(targetVelocity != 0 && MathF.Sign(vel.X) == MathF.Sign(intended) && )
-            vel.X = MathUtils.MoveTowards(vel.X, targetVelocity, accel * dt);
+            return MathUtils.MoveTowards(vel, targetVelocity, accel.Value * dt);
             // vel.X = MathUtils.LerpDecay(vel.X, targetVelocity, accel, dt);
         }
         else
         {
-            vel.X = targetVelocity;
+            return targetVelocity;
         }
-        return vel;
     }
 
     public override void Update(TimeSpan delta)
     {
         float dt = (float)delta.TotalSeconds;
-        ClearCanBeHeldSpatialHash();
+        ClearInteractSpatialHash();
         ClearSolidSpatialHash();
 
-        foreach (var entity in InteractFilter.Entities)
-        {
-            var position = Get<Position>(entity);
-            var rect = Get<Rectangle>(entity);
-
-            InteractSpatialHash.Insert(entity, GetWorldRect(position, rect));
-        }
-
-        foreach (var entity in InteractFilter.Entities)
-        {
-            foreach (var other in OutRelations<Colliding>(entity))
-            {
-                Unrelate<Colliding>(entity, other);
-            }
-        }
-
-        foreach (var entity in InteractFilter.Entities)
-        {
-            var position = Get<Position>(entity);
-            var rect = GetWorldRect(position, Get<Rectangle>(entity));
-
-            foreach (var (other, otherRect) in InteractSpatialHash.Retrieve(rect))
-            {
-                if (entity != other && rect.Intersects(otherRect))
-                {
-                    Relate(entity, other, new Colliding());
-                }
-            }
-        }
         // insert entities into the spatial hash
+
         foreach (var entity in SolidFilter.Entities)
         {
             var position = Get<Position>(entity);
@@ -232,89 +202,12 @@ public class Motion : MoonTools.ECS.System
             }
             var pos = Get<Position>(entity);
             var vel = Get<Velocity>(entity).Value;
-
-            // if (!Has<PreventInput>(entity))
+            
+            if (GetIntendedMove(entity, pos, out Vector2 intendedMove))
             {
-                if (Has<AttemptJumpThisFrame>(entity))
-                {
-                    if (Has<Grounded>(entity) || Has<IsPivoting>(entity))
-                    {
-                        if (Has<CanJump>(entity))
-                        {
-                            float jumpSpeed = Get<CanJump>(entity).Value;
-                            if (Has<MaxSpeedJump>(entity) && Has<MoveSpeed>(entity))
-                            {
-                                float maxJumpSpeed = Get<MaxSpeedJump>(entity).Value;
-                                if (Has<IsPivoting>(entity))
-                                {
-                                    vel.Y = -maxJumpSpeed;
-                                }
-                                else
-                                {
-                                    vel.Y = -MathUtils.Lerp(jumpSpeed, maxJumpSpeed, MathF.Abs(vel.X / Get<MoveSpeed>(entity).Value));
-                                }
-                            }
-                            else
-                            {
-                                vel.Y = -jumpSpeed;
-                            }
-                            Remove<Grounded>(entity);
-                            Set(entity, new IsJumping());
-                            EntityPrefabs.PlaySFX(StaticAudio.Mario_Jump);
-                            Remove<IsPivoting>(entity);
-                        }
-                    }
-                    // vel.Y = -Get<CanJump>(entity).Value;
-                    else if (Has<CanWallJump>(entity) && Has<TouchingWall>(entity))
-                    {
-                        bool touchingRight = Get<TouchingWall>(entity).Right;
-                        vel.Y = -MoveConsts.WALLJUMP_SPEED_Y;
-                        vel.X = touchingRight ? -MoveConsts.WALLJUMP_SPEED_X : MoveConsts.WALLJUMP_SPEED_X;
-                        Set(entity, new Facing(!touchingRight));
-                        Set(entity, new IsJumping());
-                        Set(CreateEntity(), new PlayStaticSFX(StaticAudio.Mario_Jump));
-                        Remove<CoyoteGrounded>(entity);
-                    }
-                    else if (Has<RemainingAirJumps>(entity))
-                    {
-                        int remainingJumps = Get<RemainingAirJumps>(entity).Value;
-                        if (remainingJumps > 0)
-                        {
-                            Set(entity, new RemainingAirJumps(remainingJumps - 1));
-                        }
-                        else
-                        {
-                            Remove<RemainingAirJumps>(entity);
-                        }
-                        vel.Y = -Get<CanAirJump>(entity).Force;
-                    }
-
-                    Remove<AttemptJumpThisFrame>(entity);
-                }
-                if (Has<IntendedMove>(entity))
-                {
-                    vel = CalcIntendedVelocity(entity, vel, dt);
-                    Remove<IntendedMove>(entity);
-                }
+                vel = CalcIntendedVelocity(entity, vel, intendedMove, dt);
+                Remove<IntendedMove>(entity);
             }
-
-            if (Has<Gravity>(entity))
-            {
-                if (Has<Grounded>(entity) || Has<IsPivoting>(entity))
-                {
-                    vel.Y = MathF.Min(vel.Y, 0);
-                    Remove<Grounded>(entity); // removes grounded on all entities before checking again to see if they are grounded this frame
-                }
-                else
-                {
-                    // bool isWallSliding = Has<CanWallJump>(entity) && Has<TouchingWall>(entity) && vel.Y >= 0;
-                    // float grav = isWallSliding ? MoveConsts.WALL_GRAVITY : MoveConsts.GRAVITY; //Get<Gravity>(entity).Value;
-                    // vel.Y = MathF.Min(vel.Y + grav * (float)delta.TotalSeconds, isWallSliding ? MoveConsts.WALL_MAX_FALL_SPEED : MoveConsts.MAX_FALL_SPEED);
-                    float grav = vel.Y < 0 ? MoveConsts.RISE_GRAVITY : MoveConsts.GRAVITY;
-                    vel.Y = MathF.Min(vel.Y + grav * (float)delta.TotalSeconds, MoveConsts.MAX_FALL_SPEED);
-                }
-            }
-
 
             if (Has<Rectangle>(entity) && Has<CollidesWithSolids>(entity) && !Has<IgnoreCollision>(entity))
             {
@@ -353,7 +246,7 @@ public class Motion : MoonTools.ECS.System
             UnrelateAll<TouchingSolid>(entity);
         }
         EntityUtils.RemoveAll<TouchingWall>(World);
-
+        // MARK: Touch Solid Check
         foreach (var entity in CollidesWithSolidsFilter.Entities)
         {
             var position = Get<Position>(entity);
@@ -402,20 +295,9 @@ public class Motion : MoonTools.ECS.System
                     {
                         if (Has<BouncesOffWalls>(entity) && -Get<BouncesOffWalls>(entity).MinSpeed >= velocity.X)
                         {
-                            EntityPrefabs.PlaySFX(StaticAudio.Mario_Bump);
+                            EntityPrefabs.PlaySFX(StaticAudio.sfx_movement_jump10_landing);
                             // Set(entity, new Velocity(-velocity.X, velocity.Y));
                             velocity.X = -velocity.X;
-                        }
-                        else if (World.TryGet(entity, out BouncesOffWallsConsistent bounceData) && -bounceData.MinSpeed >= velocity.X)
-                        {
-                            EntityPrefabs.PlaySFX(StaticAudio.Mario_Bump);
-                            velocity.X = bounceData.BounceSpeed;
-                            // velocity.Y += -100;
-                            // if (Has<Grounded>(entity))
-                            // {
-                            //     velocity.Y = -100;
-                            //     Remove<Grounded>(entity);
-                            // }
                         }
                         else
                         {
@@ -433,20 +315,10 @@ public class Motion : MoonTools.ECS.System
                     {
                         if (Has<BouncesOffWalls>(entity) && Get<BouncesOffWalls>(entity).MinSpeed <= velocity.X)
                         {
-                            EntityPrefabs.PlaySFX(StaticAudio.Mario_Bump);
+                            EntityPrefabs.PlaySFX(StaticAudio.sfx_movement_jump10_landing);
                             // Set(entity, new Velocity(-velocity.X, velocity.Y));
                             velocity.X = -velocity.X;
 
-                        }
-                        else if (World.TryGet(entity, out BouncesOffWallsConsistent bounceData) && bounceData.MinSpeed <= velocity.X)
-                        {
-                            EntityPrefabs.PlaySFX(StaticAudio.Mario_Bump);
-                            velocity.X = -bounceData.BounceSpeed;
-                            // if (Has<Grounded>(entity))
-                            // {
-                            //     velocity.Y = -100;
-                            //     Remove<Grounded>(entity);
-                            // }
                         }
                         else
                         {
@@ -463,21 +335,23 @@ public class Motion : MoonTools.ECS.System
                 {
                     if (velocity.Y < 0)
                     {
-                        velocity.Y = 0;
+                        if(Has<BouncesOffWalls>(entity)){
+                            EntityPrefabs.PlaySFX(StaticAudio.sfx_movement_jump10_landing);
+                            velocity.Y = -velocity.Y;
+                        } else {
+                            velocity.Y = 0;
+                        }
                     }
                 }
-                if (downCollided != SolidCheck.Miss && Has<Gravity>(entity) && velocity.Y >= -1)
+                if (downCollided != SolidCheck.Miss)
                 {
-
-                    Remove<IsJumping>(entity);
-                    Set(entity, new Grounded());
-                    if (Has<CanCoyoteJump>(entity))
-                    {
-                        Set(entity, new CoyoteGrounded());
-                    }
-                    if (Has<CanAirJump>(entity))
-                    {
-                        Set(entity, new RemainingAirJumps(Get<CanAirJump>(entity).Max));
+                    if(velocity.Y > 0){
+                        if(Has<BouncesOffWalls>(entity)){
+                            EntityPrefabs.PlaySFX(StaticAudio.sfx_movement_jump10_landing);
+                            velocity.Y = -velocity.Y;
+                        } else {
+                            velocity.Y = 0;
+                        }
                     }
                 }
                 if (prevVelocity != velocity)
@@ -486,5 +360,69 @@ public class Motion : MoonTools.ECS.System
                 }
             }
         }
+        // MARK: Offset
+        OffsetSystem.Update(delta);
+
+        // MARK: Interact
+        foreach (var entity in InteractFilter.Entities)
+        {
+            var position = Get<Position>(entity);
+            var rect = Get<Rectangle>(entity);
+
+            InteractSpatialHash.Insert(entity, GetWorldRect(position, rect));
+        }
+        foreach((var entityA, var entityB) in Relations<Colliding>()){
+            UnrelateAll<Colliding>(entityA);
+            UnrelateAll<Colliding>(entityB);
+        }
+        foreach (var entity in InteractFilter.Entities)
+        {
+            var position = Get<Position>(entity);
+            var rect = GetWorldRect(position, Get<Rectangle>(entity));
+
+            foreach (var (other, otherRect) in InteractSpatialHash.Retrieve(rect))
+            {
+                if (entity != other && rect.Intersects(otherRect))
+                {
+                    Relate(entity, other, new Colliding());
+                }
+            }
+        }
+
+        // start of attempt
+        // foreach (var entity in InteractFilter.Entities)
+        // {
+        //     var position = Get<Position>(entity);
+        //     var rect = Get<Rectangle>(entity);
+        //     (EffectorFlags effectorFlags, EffectedFlags effectedFlags) = Get<CollisionFlags>(entity);
+
+        //     InteractSpatialHash.Insert(entity, GetWorldRect(position, rect), effectorFlags, effectedFlags);
+        // }
+
+        // foreach(var collision in InteractSpatialHash.Collisions[EffectorFlags])
+        // end of attempt
+
+
+        // foreach (var entity in InteractFilter.Entities)
+        // {
+        //     foreach (var other in OutRelations<Colliding>(entity))
+        //     {
+        //         Unrelate<Colliding>(entity, other);
+        //     }
+        // }
+
+        // foreach (var entity in InteractFilter.Entities)
+        // {
+        //     var position = Get<Position>(entity);
+        //     var rect = GetWorldRect(position, Get<Rectangle>(entity));
+
+        //     foreach (var (other, otherRect) in InteractSpatialHash.Retrieve(rect))
+        //     {
+        //         if (entity != other && rect.Intersects(otherRect))
+        //         {
+        //             Relate(entity, other, new Colliding());
+        //         }
+        //     }
+        // }
     }
 }

@@ -107,8 +107,9 @@ public static class Operations
 
     public static Preferences Preferences;
 
+    public static string ProjectFolderName = Path.GetFullPath($"{AppDomain.CurrentDomain.BaseDirectory}/../../../../..").Replace(Path.GetFullPath($"{AppDomain.CurrentDomain.BaseDirectory}/../../../../../.."), "").Replace("\\", "").Replace("/", "");
     public static string PreferencesFolderLocation =
-        $"{Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData), "MyGameContentBuilder")}";
+        $"{Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData), "MyGameContentBuilder", ProjectFolderName)}";
 
     private static string PreferencesFileLocation =
         Path.Combine(

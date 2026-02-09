@@ -34,7 +34,7 @@ public class Renderer : MoonTools.ECS.Renderer
     MoonTools.ECS.Filter SpriteAnimationFilter;
     MoonTools.ECS.Filter SpriteFilter;
     MoonTools.ECS.Filter SliceFilter;
-    ImguiRenderer imguiRenderer;
+    // ImguiRenderer imguiRenderer;
 
     public Renderer(World world, GraphicsDevice graphicsDevice, TitleStorage titleStorage, Window window, TextureFormat swapchainFormat) : base(world)
     {
@@ -50,7 +50,7 @@ public class Renderer : MoonTools.ECS.Renderer
         DepthTexture = Texture.Create2D(GraphicsDevice, "Depth Texture", Dimensions.GAME_W, Dimensions.GAME_H, TextureFormat.D16Unorm, TextureUsageFlags.DepthStencilTarget);
 
         // SpriteAtlasTexture = TextureAtlases.TP_Sprites.Texture;
-        SpriteAtlasTexture = TextureAtlases.BT_Sprites.Texture;
+        SpriteAtlasTexture = TextureAtlases.BJ_Sprites.Texture;
 
         TextPipeline = GraphicsPipeline.Create(
             GraphicsDevice,
@@ -89,7 +89,7 @@ public class Renderer : MoonTools.ECS.Renderer
         PointSampler = Sampler.Create(GraphicsDevice, SamplerCreateInfo.PointClamp);
 
         ArtSpriteBatch = new SpriteBatch(GraphicsDevice, titleStorage, swapchainFormat, TextureFormat.D16Unorm);
-        imguiRenderer = new ImguiRenderer(graphicsDevice, swapchainFormat, window, titleStorage);
+        // imguiRenderer = new ImguiRenderer(graphicsDevice, swapchainFormat, window, titleStorage);
     }
 
     public void Render(Window window)
@@ -102,23 +102,21 @@ public class Renderer : MoonTools.ECS.Renderer
         {
 
             ArtSpriteBatch.Start();
-            if (false)
+            foreach (var entity in RectangleFilter.Entities)
             {
-                foreach (var entity in RectangleFilter.Entities)
+                var position = Get<Position>(entity);
+                var rectangle = Get<Rectangle>(entity);
+                // var orientation = Has<Rotation>(entity) ? Get<Rotation>(entity).Value : 0.0f;
+                float orientation = 0;
+                var color = Has<ColorBlend>(entity) ? Get<ColorBlend>(entity).Color : Color.Red;
+                var depth = -2f;
+                if (Has<Depth>(entity))
                 {
-                    var position = Get<Position>(entity);
-                    var rectangle = Get<Rectangle>(entity);
-                    var orientation = Has<Orientation>(entity) ? Get<Orientation>(entity).Angle : 0.0f;
-                    var color = Has<ColorBlend>(entity) ? Get<ColorBlend>(entity).Color : Color.Red;
-                    var depth = -2f;
-                    if (Has<Depth>(entity))
-                    {
-                        depth = -Get<Depth>(entity).Value;
-                    }
-
-                    var sprite = SpriteAnimations.Pixel.Frames[0];
-                    ArtSpriteBatch.Add(new Vector3(position.X + rectangle.X, position.Y + rectangle.Y, depth), orientation, new Vector2(rectangle.Width, rectangle.Height), color, sprite.UV.LeftTop, sprite.UV.Dimensions);
+                    depth = -Get<Depth>(entity).Value;
                 }
+
+                var sprite = SpriteAnimations.Pixel.Frames[0];
+                ArtSpriteBatch.Add(new Vector3(position.X + rectangle.X, position.Y + rectangle.Y, depth), orientation, new Vector2(rectangle.Width, rectangle.Height), color, new Color(0, 0, 0, 0), sprite.UV.LeftTop, sprite.UV.Dimensions);
             }
 
             foreach (var entity in SpriteAnimationFilter.Entities)
@@ -153,7 +151,8 @@ public class Renderer : MoonTools.ECS.Renderer
                 // var sprite = animation.CurrentSprite;
                 // var origin = animation.Origin;
                 var depth = -1f;
-                var color = Color.White;
+                var colorBlend = Color.White;
+                var colorOverlay = new Color();
                 var rect = Get<Rectangle>(entity);
                 position += new Vector2(rect.X, rect.Y);
                 var nineSlice = Get<NineSlice>(entity);
@@ -164,12 +163,12 @@ public class Renderer : MoonTools.ECS.Renderer
                 bool hasChanged = false;
                 for (int x = 0; x < rect.Width - nineSlice.Width; x += nineSlice.Width)
                 {
-                    ArtSpriteBatch.Add(new Vector3(position.X + x, position.Y, depth), 0, new Vector2(top.SliceRect.W, top.SliceRect.H), color, top.UV.LeftTop, top.UV.Dimensions);
+                    ArtSpriteBatch.Add(new Vector3(position.X + x, position.Y, depth), 0, new Vector2(top.SliceRect.W, top.SliceRect.H), colorBlend, colorOverlay, top.UV.LeftTop, top.UV.Dimensions);
                     for (int y = nineSlice.Height; y < rect.Height - nineSlice.Height; y += nineSlice.Height)
                     {
-                        ArtSpriteBatch.Add(new Vector3(position.X + x, position.Y + y, depth), 0, new Vector2(center.SliceRect.W, center.SliceRect.H), color, center.UV.LeftTop, center.UV.Dimensions);
+                        ArtSpriteBatch.Add(new Vector3(position.X + x, position.Y + y, depth), 0, new Vector2(center.SliceRect.W, center.SliceRect.H), colorBlend, colorOverlay, center.UV.LeftTop, center.UV.Dimensions);
                     }
-                    ArtSpriteBatch.Add(new Vector3(position.X + x, position.Y + rect.Height - nineSlice.Height, depth), 0, new Vector2(bottom.SliceRect.W, bottom.SliceRect.H), color, bottom.UV.LeftTop, bottom.UV.Dimensions);
+                    ArtSpriteBatch.Add(new Vector3(position.X + x, position.Y + rect.Height - nineSlice.Height, depth), 0, new Vector2(bottom.SliceRect.W, bottom.SliceRect.H), colorBlend, colorOverlay, bottom.UV.LeftTop, bottom.UV.Dimensions);
                     if (!hasChanged)
                     {
                         hasChanged = true;
@@ -182,12 +181,12 @@ public class Renderer : MoonTools.ECS.Renderer
                 top = nineSlice.TopRight;
                 center = nineSlice.CenterRight;
                 bottom = nineSlice.BottomRight;
-                ArtSpriteBatch.Add(new Vector3(position.X + finalX, position.Y, depth), 0, new Vector2(top.SliceRect.W, top.SliceRect.H), color, top.UV.LeftTop, top.UV.Dimensions);
+                ArtSpriteBatch.Add(new Vector3(position.X + finalX, position.Y, depth), 0, new Vector2(top.SliceRect.W, top.SliceRect.H), colorBlend, colorOverlay, top.UV.LeftTop, top.UV.Dimensions);
                 for (int y = nineSlice.Height; y < rect.Height - nineSlice.Height; y += nineSlice.Height)
                 {
-                    ArtSpriteBatch.Add(new Vector3(position.X + finalX, position.Y + y, depth), 0, new Vector2(center.SliceRect.W, center.SliceRect.H), color, center.UV.LeftTop, center.UV.Dimensions);
+                    ArtSpriteBatch.Add(new Vector3(position.X + finalX, position.Y + y, depth), 0, new Vector2(center.SliceRect.W, center.SliceRect.H), colorBlend, colorOverlay, center.UV.LeftTop, center.UV.Dimensions);
                 }
-                ArtSpriteBatch.Add(new Vector3(position.X + finalX, position.Y + rect.Height - nineSlice.Height, depth), 0, new Vector2(bottom.SliceRect.W, bottom.SliceRect.H), color, bottom.UV.LeftTop, bottom.UV.Dimensions);
+                ArtSpriteBatch.Add(new Vector3(position.X + finalX, position.Y + rect.Height - nineSlice.Height, depth), 0, new Vector2(bottom.SliceRect.W, bottom.SliceRect.H), colorBlend, colorOverlay, bottom.UV.LeftTop, bottom.UV.Dimensions);
 
                 //     ArtSpriteBatch.Add(new Vector3(position.X, position.Y, depth), 0, new Vector2(sprite.SliceRect.W, sprite.SliceRect.H), color, sprite.UV.LeftTop, sprite.UV.Dimensions);
                 // sprite = nineSlice.TopRight;
@@ -236,23 +235,6 @@ public class Renderer : MoonTools.ECS.Renderer
                 {
                     depth = -Get<Depth>(entity).Value;
                 }
-
-                // if (Has<TextDropShadow>(entity))
-                // {
-                //     var dropShadow = Get<TextDropShadow>(entity);
-
-                //     var dropShadowPosition = position + new Position(dropShadow.OffsetX, dropShadow.OffsetY);
-
-                //     TextBatch.SpanAdd(
-                //         font,
-                //         span,
-                //         text.Size,
-                //         Matrix4x4.CreateTranslation(dropShadowPosition.X, dropShadowPosition.Y, depth - 1),
-                //         new Color(0f, 0, 0, color.A),
-                //         text.HorizontalAlignment,
-                //         text.VerticalAlignment
-                //     );
-                // }
                 if (!Has<WordWrap>(entity))
                 {
                     var span = str.AsSpan(0, spanLength);
@@ -295,12 +277,8 @@ public class Renderer : MoonTools.ECS.Renderer
                                 TextBatch.AddSpan(font, str.AsSpan(startIndex, prevEndIndex - startIndex), text.Size, Matrix4x4.CreateTranslation(new Vector3(position.X, y, depth)), color, text.HorizontalAlignment, text.VerticalAlignment);
                                 y += rect.H + 2;
                             }
-                            // StringBuilder.Clear();
-                            // StringBuilder.Append(word);
-                            // StringBuilder.Append(" ");
                             startIndex = prevEndIndex;
                         }
-                        // current = StringBuilder.ToString();
                         prevEndIndex = endIndex;
                         executions--;
 
@@ -315,37 +293,6 @@ public class Renderer : MoonTools.ECS.Renderer
                     }
 
                 }
-                // else
-                // {
-                //     var max = Get<WordWrap>(entity).Max;
-                //     // var font = Stores.FontStorage.Get(text.FontID);
-                //     // var str = Stores.TextStorage.Get(text.TextID);
-                //     var words = str.Split(' ');
-                //     StringBuilder.Clear();
-                //     float y = position.Y;
-                //     var current = "";
-                //     WellspringCS.Wellspring.Rectangle rect;
-
-                //     foreach (var word in words)
-                //     {
-                //         StringBuilder.Append(word);
-                //         StringBuilder.Append(" ");
-                //         font.TextBounds(StringBuilder.ToString(), text.Size, text.HorizontalAlignment, text.VerticalAlignment, out rect);
-                //         if (rect.W >= max)
-                //         {
-                //             TextBatch.Add(font, current, text.Size, Matrix4x4.CreateTranslation(new Vector3(position.X, y, depth)), color, text.HorizontalAlignment, text.VerticalAlignment);
-                //             y += rect.H + 2;
-                //             StringBuilder.Clear();
-                //             StringBuilder.Append(word);
-                //             StringBuilder.Append(" ");
-                //         }
-                //         current = StringBuilder.ToString();
-                //     }
-
-                //     TextBatch.Add(font, current, text.Size, Matrix4x4.CreateTranslation(new Vector3(position.X, y, depth)), color, text.HorizontalAlignment, text.VerticalAlignment);
-
-                // }
-
             }
 
             ArtSpriteBatch.Upload(commandBuffer);
@@ -353,7 +300,7 @@ public class Renderer : MoonTools.ECS.Renderer
 
             var renderPass = commandBuffer.BeginRenderPass(
                 new DepthStencilTargetInfo(DepthTexture, 1, 0),
-                new ColorTargetInfo(RenderTexture, Color.Black)
+                new ColorTargetInfo(RenderTexture, Some<ClearColor>() ? GetSingleton<ClearColor>().Color : Color.Black)
             );
 
             var viewProjectionMatrices = new ViewProjectionMatrices(GetCameraMatrix(), GetProjectionMatrix());
@@ -368,10 +315,8 @@ public class Renderer : MoonTools.ECS.Renderer
 
             commandBuffer.EndRenderPass(renderPass);
 
-
-
             commandBuffer.Blit(RenderTexture, swapchainTexture, MoonWorks.Graphics.Filter.Nearest);
-            imguiRenderer.Draw(commandBuffer, swapchainTexture);
+            // imguiRenderer.Draw(commandBuffer, swapchainTexture);
         }
 
         GraphicsDevice.Submit(commandBuffer);
@@ -387,7 +332,9 @@ public class Renderer : MoonTools.ECS.Renderer
         // var sprite = animation.CurrentSprite;
         // var origin = animation.Origin;
         var depth = -1f;
-        var color = Color.White;
+        var colorBlend = Color.White;
+        var colorOverlay = new Color(0, 0, 0, 0);
+        var orientation = Has<Rotation>(entity) ? Get<Rotation>(entity).Value : 0.0f;
         bool flip = ShouldFlip(entity);
         origin += new Vector2(sprite.FrameRect.X, sprite.FrameRect.Y);
 
@@ -399,10 +346,17 @@ public class Renderer : MoonTools.ECS.Renderer
         }
 
         var offset = -origin;
+        // var offset = Vector2.Zero;
 
         if (Has<ColorBlend>(entity))
         {
-            color = Get<ColorBlend>(entity).Color;
+            colorBlend = Get<ColorBlend>(entity).Color;
+        }
+        if(Has<ColorOverlayTimer>(entity)) {
+            colorOverlay = Get<ColorOverlayTimer>(entity).Color;
+        }
+        else if (Has<ColorOverlay>(entity)){
+            colorOverlay = Get<ColorOverlay>(entity).Color;
         }
 
         if (Has<ColorFlicker>(entity))
@@ -410,7 +364,7 @@ public class Renderer : MoonTools.ECS.Renderer
             var colorFlicker = Get<ColorFlicker>(entity);
             if (colorFlicker.ElapsedFrames % 2 == 0)
             {
-                color = colorFlicker.Color;
+                colorBlend = colorFlicker.Color;
             }
         }
 
@@ -422,17 +376,17 @@ public class Renderer : MoonTools.ECS.Renderer
         // ArtSpriteBatch.Add(new Vector3(position.X + offset.X, position.Y + offset.Y, depth), 0, new Vector2(sprite.SliceRect.W, sprite.SliceRect.H) * scale, color, sprite.UV.LeftTop, sprite.UV.Dimensions);
         if (flip)
         {
-            ArtSpriteBatch.Add(new Vector3(position.X - offset.X, position.Y + offset.Y, depth), 0, new Vector2(-sprite.SliceRect.W, sprite.SliceRect.H) * scale, color, sprite.UV.LeftTop, sprite.UV.Dimensions);//sprite.UV.RightTop, new Vector2(-sprite.UV.Dimensions.X, sprite.UV.Dimensions.Y));
+            ArtSpriteBatch.Add(new Vector3(position.X - offset.X, position.Y + offset.Y, depth), orientation, new Vector2(-sprite.SliceRect.W, sprite.SliceRect.H) * scale, colorBlend, colorOverlay, sprite.UV.LeftTop, sprite.UV.Dimensions);//sprite.UV.RightTop, new Vector2(-sprite.UV.Dimensions.X, sprite.UV.Dimensions.Y));
         }
         else
         {
-            ArtSpriteBatch.Add(new Vector3(position.X + offset.X, position.Y + offset.Y, depth), 0, new Vector2(sprite.SliceRect.W, sprite.SliceRect.H) * scale, color, sprite.UV.LeftTop, sprite.UV.Dimensions);
+            ArtSpriteBatch.Add(new Vector3(position.X + offset.X, position.Y + offset.Y, depth), orientation, new Vector2(sprite.SliceRect.W, sprite.SliceRect.H) * scale, colorBlend, colorOverlay, sprite.UV.LeftTop, sprite.UV.Dimensions);
         }
     }
 
     public Matrix4x4 GetCameraMatrix()
     {
-        return Matrix4x4.Identity;
+        return Matrix4x4.CreateTranslation(new Vector3(-Globals.CameraX, -Globals.CameraY, 0));
     }
 
     public Matrix4x4 GetProjectionMatrix()

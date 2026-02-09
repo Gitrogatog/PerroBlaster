@@ -5,11 +5,22 @@ using System.Xml;
 
 namespace MyGame.Components;
 
+public enum GameSceneType {
+    StartMenu, Level, EndMenu,
+}
+public enum AxeState {
+    Held, Thrown, Stuck, Recalled
+}
 public enum ClickableState
 {
     Idle, Hover, Click
 }
-
+public enum EnemyType {
+    Square, Diamond, Circle, Triangle, Pentagon
+}
+public enum BulletPattern {
+    Single, Triple
+}
 public enum ThingType
 {
     Player, Bunny, RushBunny, TumbleBunny, ClimbBunny, FallBunny, Explosion
@@ -17,6 +28,9 @@ public enum ThingType
 public enum TileType
 {
     Solid, Fake, Invisible, Throwable, Spike
+}
+public enum RectThingType {
+    EnterFence, ExitFence,
 }
 
 public enum Cardinal
@@ -26,6 +40,22 @@ public enum Cardinal
     Horizontal = Left | Right,
     Negative = Up | Left,
     Positive = Down | Right
+}
+[Flags]
+public enum EffectorFlags {
+    None,
+    CanDamage = 1,
+    CanTriggerEvent = 1 << 1,
+    CanTouchWall = 1 << 2,
+    CanTouchPit = 1 << 3,
+}
+[Flags]
+public enum EffectedFlags {
+    None = 0,
+    CanTakeDamage = 1,
+    CanPerformEvent = 1 << 1,
+    IsWall = 1 << 2,
+    IsPit = 1 << 3,
 }
 public enum AmbushTrigger
 {

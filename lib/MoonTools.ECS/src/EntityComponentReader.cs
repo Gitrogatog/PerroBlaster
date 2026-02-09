@@ -15,6 +15,16 @@ public abstract class EntityComponentReader
 	protected bool Has<T>(in Entity Entity) where T : unmanaged => World.Has<T>(Entity);
 	protected bool Some<T>() where T : unmanaged => World.Some<T>();
 	protected ref T Get<T>(in Entity Entity) where T : unmanaged => ref World.Get<T>(Entity);
+	protected bool TryGet<T>(in Entity Entity, out T component) where T : unmanaged
+	{
+		if (Has<T>(Entity))
+		{
+			component = Get<T>(Entity);
+			return true;
+		}
+		component = default;
+		return false;
+	}
 	protected ref T GetSingleton<T>() where T : unmanaged => ref World.GetSingleton<T>();
 	protected Entity GetSingletonEntity<T>() where T : unmanaged => World.GetSingletonEntity<T>();
 

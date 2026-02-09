@@ -13,7 +13,7 @@ public class ImguiRenderer
 {
     // private string ShaderContentPath = "ContentBuilder/ContentBuilderUI/Content/Shaders";
     // private string S3 = "ContentBuilder\\ContentBuilderUI\\Content\\Shaders\\ImGui.frag.spv";
-    private string ShaderPath2 = Path.Combine("ContentBuilder", "ContentBuilderUI", "Content", "Shaders");
+    // private string ShaderPath2 = Path.Combine("ContentBuilder", "ContentBuilderUI", "Content", "Shaders");
 
     GraphicsDevice GraphicsDevice;
 
@@ -49,7 +49,7 @@ public class ImguiRenderer
         ImGui.CreateContext();
         var io = ImGui.GetIO();
         // io.Fonts.AddFontFromFileTTF(Path.Combine(Fonts.FontContentPath, "FiraCode-Regular.ttf"), 16);
-        io.Fonts.AddFontFromFileTTF("ContentBuilder/ContentBuilderUI/Content/Fonts/FiraCode-Regular.ttf", 16);
+        io.Fonts.AddFontFromFileTTF("Content/Fonts/FiraCode-Regular.ttf", 16);
         io.Fonts.Build();
         io.DisplaySize = new Vector2(Window.Width, Window.Height);
         io.DisplayFramebufferScale = Vector2.One;

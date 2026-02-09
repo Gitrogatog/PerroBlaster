@@ -4,7 +4,6 @@ namespace MyGame.Data;
 
 public static class Colors
 {
-    public static Color OrderCategory = new Color(38, 255, 103);
-    public static Color OrderIngredient = new Color(3, 254, 249);
-
+    public static Color SolidWall => new Color(255, 129, 66);
+    public static Color Background => new Color(43, 18, 84);
 }

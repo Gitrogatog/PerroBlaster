@@ -21,18 +21,18 @@ namespace MyGame
 #if DEBUG
             WindowCreateInfo windowCreateInfo = new WindowCreateInfo
             {
-                WindowWidth = Dimensions.GAME_W * 2,
-                WindowHeight = Dimensions.GAME_H * 2,
-                WindowTitle = "By Bunnies, For Bunnies",
+                WindowWidth = Dimensions.GAME_W,
+                WindowHeight = Dimensions.GAME_H,
+                WindowTitle = "AXE",
                 ScreenMode = ScreenMode.Windowed
             };
 #else
 			WindowCreateInfo windowCreateInfo = new WindowCreateInfo
 			{
-				WindowWidth = 320 * 2,
-				WindowHeight = 240 * 2,
-				WindowTitle = "ROLL AND CASH: GROCERY LORDS: A LONDON JERRY STORY",
-				ScreenMode = ScreenMode.Fullscreen
+				WindowWidth = Dimensions.GAME_W,
+				WindowHeight = Dimensions.GAME_H,
+				WindowTitle = "AXE",
+				ScreenMode = ScreenMode.Windowed
 			};
 #endif
 
@@ -44,7 +44,7 @@ namespace MyGame
             debugMode = true;
 #endif
 
-            var appInfo = new AppInfo("JerryCrew", "MyGame");
+            var appInfo = new AppInfo("Gitrogatog", "MyGame");
             // MyGameGame game = new MyGameGame(
             // 	appInfo,
             // 	windowCreateInfo,

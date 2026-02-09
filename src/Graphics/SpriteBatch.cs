@@ -135,7 +135,8 @@ public class SpriteBatch
         Vector3 position,
         float rotation,
         Vector2 size,
-        Color color,
+        Color colorBlend,
+        Color colorOverlay,
         Vector2 leftTopUV,
         Vector2 dimensionsUV
     )
@@ -149,7 +150,8 @@ public class SpriteBatch
         instanceDatas[InstanceIndex].Translation = position;
         instanceDatas[InstanceIndex].Rotation = rotation;
         instanceDatas[InstanceIndex].Scale = size;
-        instanceDatas[InstanceIndex].Color = color.ToVector4();
+        instanceDatas[InstanceIndex].ColorBlend = colorBlend.ToVector4();
+        instanceDatas[InstanceIndex].ColorOverlay = colorOverlay.ToVector4();
         instanceDatas[InstanceIndex].UV0 = leftTopUV;
         instanceDatas[InstanceIndex].UV1 = new Vector2(right, top);
         instanceDatas[InstanceIndex].UV2 = new Vector2(left, bottom);
@@ -189,7 +191,7 @@ public class SpriteBatch
     }
 }
 
-[StructLayout(LayoutKind.Explicit, Size = 48)]
+[StructLayout(LayoutKind.Explicit, Size = 64)]
 struct PositionTextureColorVertex : IVertexType
 {
     [FieldOffset(0)]
@@ -199,12 +201,16 @@ struct PositionTextureColorVertex : IVertexType
     public Vector2 TexCoord;
 
     [FieldOffset(32)]
-    public Vector4 Color;
+    public Vector4 ColorBlend;
+
+    [FieldOffset(48)]
+    public Vector4 ColorOverlay;
 
     public static VertexElementFormat[] Formats { get; } =
     [
         VertexElementFormat.Float4,
         VertexElementFormat.Float2,
+        VertexElementFormat.Float4,
         VertexElementFormat.Float4
     ];
 
@@ -212,11 +218,12 @@ struct PositionTextureColorVertex : IVertexType
     [
         0,
         16,
-        32
+        32,
+        48
     ];
 }
 
-[StructLayout(LayoutKind.Explicit, Size = 80)]
+[StructLayout(LayoutKind.Explicit, Size = 96)]
 public record struct SpriteInstanceData
 {
     [FieldOffset(0)]
@@ -226,14 +233,16 @@ public record struct SpriteInstanceData
     [FieldOffset(16)]
     public Vector2 Scale;
     [FieldOffset(32)]
-    public Vector4 Color;
+    public Vector4 ColorBlend;
     [FieldOffset(48)]
-    public Vector2 UV0;
-    [FieldOffset(56)]
-    public Vector2 UV1;
+    public Vector4 ColorOverlay;
     [FieldOffset(64)]
-    public Vector2 UV2;
+    public Vector2 UV0;
     [FieldOffset(72)]
+    public Vector2 UV1;
+    [FieldOffset(80)]
+    public Vector2 UV2;
+    [FieldOffset(88)]
     public Vector2 UV3;
 }
 

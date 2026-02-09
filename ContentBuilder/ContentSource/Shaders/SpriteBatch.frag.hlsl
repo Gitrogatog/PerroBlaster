@@ -4,7 +4,8 @@ SamplerState Sampler : register(s0, space2);
 struct Input
 {
     float2 TexCoord : TEXCOORD0;
-    float4 Color : TEXCOORD1;
+    float4 ColorBlend : TEXCOORD1;
+    float4 ColorOverlay : TEXCOORD2;
 };
 
 float4 main(Input input) : SV_Target0
@@ -15,6 +16,9 @@ float4 main(Input input) : SV_Target0
     {
         discard;
     }
-
-    return input.Color * sampledColor;
+    if(input.ColorOverlay.a > 0.5){
+        // return float4(1.0f, 1.0f, 1.0f, 1.0f);
+        return input.ColorOverlay;
+    }
+    return sampledColor * input.ColorBlend;
 }

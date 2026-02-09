@@ -24,6 +24,14 @@ public static class ImguiController
     }
     static int input0 = 16;
     static int input1 = 0;
+    public static void UpdateOrClear(float delta, bool clear) {
+        if(!clear){
+            Update(delta);
+        }
+        else{
+            Clear();
+        }
+    }
     public static void Update(float delta)
     {
         var io = ImGui.GetIO();
@@ -70,6 +78,11 @@ public static class ImguiController
 
         // ImGui.PopStyleVar(5);
         // ImGui.PopStyleColor(14);
+        ImGui.End();
+        ImGui.EndFrame();
+    }
+    public static void Clear(){
+        ImGui.NewFrame();
         ImGui.End();
         ImGui.EndFrame();
     }

@@ -51,11 +51,21 @@ public class TimerSystem : MoonTools.ECS.System
                         Set(animEntity, new Position(data.X, data.Y));
                     }
                 }
+                if(Has<ReturnToCheckpoint>(entity)) {
+                    while(Some<DestroyOnPlayerRespawn>()) {
+                        Destroy(GetSingletonEntity<DestroyOnPlayerRespawn>());
+                    }
+                    EntityPrefabs.CreatePlayer(Globals.CheckpointX, Globals.CheckpointY);
+                    Globals.CurrentRoomX = -1000;
+                    Globals.CurrentRoomY = -1000;
+                }
                 Destroy(entity);
             }
 
             else
+            {
                 Set(entity, new Timer(t));
+            }
         }
     }
 }

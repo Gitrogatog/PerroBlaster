@@ -2,7 +2,6 @@ using System;
 using MoonTools.ECS;
 using MoonWorks.Input;
 using MyGame.Components;
-using MyGame.Components;
 using MyGame.Relations;
 
 namespace MyGame.Systems;
