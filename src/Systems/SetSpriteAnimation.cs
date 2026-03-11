@@ -1,6 +1,7 @@
 using System;
 using MoonTools.ECS;
 using MyGame.Components;
+using MyGame.Utility;
 
 namespace RollAndCash.Systems;
 
@@ -33,8 +34,14 @@ public class SetSpriteAnimationSystem : MoonTools.ECS.System
                         Set(entity, message.Animation);
                     }
                 }
-                else
+                else if (message.PreserveFrame)
                 {
+                    Console.WriteLine("preserve frame!");
+                    var animation = new SpriteAnimation(message.Animation.SpriteAnimationInfo).ForceRawFrame(MathUtils.Frac01(currentAnimation.RawFrameIndex));
+                    Set(entity, animation);
+                }
+                else {
+                    Console.WriteLine("hahahh");
                     Set(entity, message.Animation);
                 }
             }
@@ -42,6 +49,8 @@ public class SetSpriteAnimationSystem : MoonTools.ECS.System
             {
                 Set(entity, message.Animation);
             }
+            // var superanim = Get<SpriteAnimation>(entity);
+            // Console.WriteLine($"anim: {superanim.Loop}");
             Remove<SetAnimation>(entity);
         }
     }

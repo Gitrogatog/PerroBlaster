@@ -19,12 +19,13 @@ public class CameraSystem : MoonTools.ECS.System
         }
         else if(Some<CameraFollow>() && TryGet<Position>(GetSingletonEntity<CameraFollow>(), out Position position))
         {
-            Globals.CameraX = -Math.Clamp(position.X + Globals.CameraXOffset, Globals.CameraMinX, Globals.CameraMaxX);
+            Globals.CameraX = Math.Clamp(position.X + Globals.CameraXOffset, Globals.CameraMinX, Globals.CameraMaxX);
+            Globals.CameraY = Math.Clamp(position.Y + Globals.CameraYOffset, Globals.CameraMinY, Globals.CameraMaxY);
             // Console.WriteLine($"camera x: {Globals.CameraX}");
         }
         foreach(var entity in FollowCameraFilter.Entities){
             (int x, int y) = Get<FollowCameraWithOffset>(entity);
-            Set(entity, new Position(Globals.CameraX + x, Globals.CameraY + y));
+            Set(entity, new Position(Globals.CameraX - x, Globals.CameraY - y));
         }
     }
 }

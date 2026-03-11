@@ -30,7 +30,7 @@ public struct CramTextureAtlasImageData
 public struct CramTextureAtlasAnimationData
 {
     public string[] Frames { get; set; }
-    public int FrameRate { get; set; }
+    public float FrameRate { get; set; }
     public int XOrigin { get; set; }
     public int YOrigin { get; set; }
 }

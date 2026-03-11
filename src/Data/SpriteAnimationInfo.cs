@@ -13,7 +13,7 @@ public class SpriteAnimationInfo
 
     public string Name { get; }
     public Sprite[] Frames { get; }
-    public int FrameRate { get; }
+    public float FrameRate { get; }
     public int OriginX { get; }
     public int OriginY { get; }
 
@@ -25,7 +25,7 @@ public class SpriteAnimationInfo
     public SpriteAnimationInfo(
         string name,
         Sprite[] frames,
-        int frameRate,
+        float frameRate,
         int originX,
         int originY
     )

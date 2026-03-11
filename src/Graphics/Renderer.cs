@@ -34,6 +34,7 @@ public class Renderer : MoonTools.ECS.Renderer
     MoonTools.ECS.Filter SpriteAnimationFilter;
     MoonTools.ECS.Filter SpriteFilter;
     MoonTools.ECS.Filter SliceFilter;
+    PriorityQueue<Entity, float> DrawPriority = new();
     // ImguiRenderer imguiRenderer;
 
     public Renderer(World world, GraphicsDevice graphicsDevice, TitleStorage titleStorage, Window window, TextureFormat swapchainFormat) : base(world)
@@ -47,7 +48,7 @@ public class Renderer : MoonTools.ECS.Renderer
         SliceFilter = FilterBuilder.Include<Position>().Include<Rectangle>().Include<NineSlice>().Build();
 
         RenderTexture = Texture.Create2D(GraphicsDevice, "Render Texture", Dimensions.GAME_W, Dimensions.GAME_H, swapchainFormat, TextureUsageFlags.ColorTarget | TextureUsageFlags.Sampler);
-        DepthTexture = Texture.Create2D(GraphicsDevice, "Depth Texture", Dimensions.GAME_W, Dimensions.GAME_H, TextureFormat.D16Unorm, TextureUsageFlags.DepthStencilTarget);
+        DepthTexture = Texture.Create2D(GraphicsDevice, "Depth Texture", Dimensions.GAME_W, Dimensions.GAME_H, TextureFormat.D16Unorm, TextureUsageFlags.DepthStencilTarget | TextureUsageFlags.Sampler);
 
         // SpriteAtlasTexture = TextureAtlases.TP_Sprites.Texture;
         SpriteAtlasTexture = TextureAtlases.BJ_Sprites.Texture;
@@ -102,42 +103,49 @@ public class Renderer : MoonTools.ECS.Renderer
         {
 
             ArtSpriteBatch.Start();
-            foreach (var entity in RectangleFilter.Entities)
-            {
-                var position = Get<Position>(entity);
-                var rectangle = Get<Rectangle>(entity);
-                // var orientation = Has<Rotation>(entity) ? Get<Rotation>(entity).Value : 0.0f;
-                float orientation = 0;
-                var color = Has<ColorBlend>(entity) ? Get<ColorBlend>(entity).Color : Color.Red;
-                var depth = -2f;
-                if (Has<Depth>(entity))
-                {
-                    depth = -Get<Depth>(entity).Value;
-                }
-
-                var sprite = SpriteAnimations.Pixel.Frames[0];
-                ArtSpriteBatch.Add(new Vector3(position.X + rectangle.X, position.Y + rectangle.Y, depth), orientation, new Vector2(rectangle.Width, rectangle.Height), color, new Color(0, 0, 0, 0), sprite.UV.LeftTop, sprite.UV.Dimensions);
-            }
+            
 
             foreach (var entity in SpriteAnimationFilter.Entities)
             {
                 if (HasInRelation<DontDraw>(entity))
                     continue;
-
-                var position = Get<Position>(entity);
-                var animation = Get<SpriteAnimation>(entity);
-                var sprite = animation.CurrentSprite;
-                DrawSprite(entity, new Vector2(position.X, position.Y), animation.CurrentSprite, animation.Origin);
+                DrawPriority.Enqueue(entity, 1f - (Has<Depth>(entity) ? (Get<Depth>(entity).Value) : 0.5f));
+                // var position = Get<Position>(entity);
+                // var animation = Get<SpriteAnimation>(entity);
+                // var sprite = animation.CurrentSprite;
+                // DrawSprite(entity, new Vector2(position.X, position.Y), animation.CurrentSprite, animation.Origin);
             }
-
+            DrawPriority.Clear();
             foreach (var entity in SpriteFilter.Entities)
             {
                 if (HasInRelation<DontDraw>(entity))
                     continue;
-
+                DrawPriority.Enqueue(entity, 1f - (Has<Depth>(entity) ? (Get<Depth>(entity).Value) : 0.5f));
+            }
+            foreach (var entity in SpriteAnimationFilter.Entities)
+            {
+                if (HasInRelation<DontDraw>(entity))
+                    continue;
+                DrawPriority.Enqueue(entity, Has<Depth>(entity) ? 1f - Get<Depth>(entity).Value : 0.5f);
+            }
+            while(DrawPriority.Count > 0) {
+                var entity = DrawPriority.Dequeue();
                 var position = Get<Position>(entity);
-                var sprite = Get<Sprite>(entity);
-                DrawSprite(entity, new Vector2(position.X, position.Y), sprite, new Vector2(MathF.Truncate(sprite.FrameRect.W * 0.5f), MathF.Truncate(sprite.FrameRect.H * 0.5f)));
+                Sprite sprite;
+                Vector2 origin;
+                if(Has<SpriteAnimation>(entity)) {
+                    var spriteAnim = Get<SpriteAnimation>(entity);
+                    sprite = spriteAnim.CurrentSprite;
+                    origin = spriteAnim.Origin;
+                }
+                else {
+                    sprite = Get<Sprite>(entity);
+                    origin = new Vector2(MathF.Truncate(sprite.FrameRect.W * 0.5f), MathF.Truncate(sprite.FrameRect.H * 0.5f));
+                }
+                // var sprite = Has<Sprite>(entity) ?
+                //     Get<Sprite>(entity) : Get<SpriteAnimation>(entity).CurrentSprite;
+                DrawSprite(entity, new Vector2(position.X, position.Y), sprite, origin);
+            
             }
 
             foreach (var entity in SliceFilter.Entities)
@@ -150,7 +158,7 @@ public class Renderer : MoonTools.ECS.Renderer
                 // var animation = Get<SpriteAnimation>(entity);
                 // var sprite = animation.CurrentSprite;
                 // var origin = animation.Origin;
-                var depth = -1f;
+                var depth = 0.999f;
                 var colorBlend = Color.White;
                 var colorOverlay = new Color();
                 var rect = Get<Rectangle>(entity);
@@ -197,6 +205,22 @@ public class Renderer : MoonTools.ECS.Renderer
                 // ArtSpriteBatch.Add(new Vector3(position.X + nineSlice.Width, position.Y + nineSlice.Height, depth), 0, new Vector2(sprite.SliceRect.W, sprite.SliceRect.H), color, sprite.UV.LeftTop, sprite.UV.Dimensions);
 
             }
+            foreach (var entity in RectangleFilter.Entities)
+            {
+                var position = Get<Position>(entity);
+                var rectangle = Get<Rectangle>(entity);
+                // var orientation = Has<Rotation>(entity) ? Get<Rotation>(entity).Value : 0.0f;
+                float orientation = 0;
+                var color = Has<ColorBlend>(entity) ? Get<ColorBlend>(entity).Color : Color.Red;
+                var depth = 0.001f;
+                if (Has<Depth>(entity))
+                {
+                    depth = Get<Depth>(entity).Value;
+                }
+
+                var sprite = SpriteAnimations.Pixel.Frames[0];
+                ArtSpriteBatch.Add(new Vector3(position.X + rectangle.X, position.Y + rectangle.Y, depth), orientation, new Vector2(rectangle.Width, rectangle.Height), color, new Color(0, 0, 0, 0), sprite.UV.LeftTop, sprite.UV.Dimensions);
+            }
 
             TextBatch.Start();
             foreach (var entity in TextFilter.Entities)
@@ -224,7 +248,13 @@ public class Renderer : MoonTools.ECS.Renderer
                 // Console.Write($"\r span length: {spanLength}  2nd: {span.Length} ");
                 var font = Fonts.FromID(text.FontID);
                 var color = Has<Color>(entity) ? Get<Color>(entity) : Color.White;
-                var depth = -1f;
+                var depth = 1f;
+                Vector2 scale = Vector2.One;
+                if (Has<SpriteScale>(entity))
+                {
+                    scale *= Get<SpriteScale>(entity).Scale;
+                    // origin *= new Vector2(scale.X, scale.Y);
+                }
 
                 if (Has<ColorBlend>(entity))
                 {
@@ -233,7 +263,7 @@ public class Renderer : MoonTools.ECS.Renderer
 
                 if (Has<Depth>(entity))
                 {
-                    depth = -Get<Depth>(entity).Value;
+                    depth = Get<Depth>(entity).Value;
                 }
                 if (!Has<WordWrap>(entity))
                 {
@@ -242,7 +272,9 @@ public class Renderer : MoonTools.ECS.Renderer
                         font,
                         span,
                         text.Size,
-                        Matrix4x4.CreateTranslation(position.X, position.Y, depth),
+                        Matrix4x4.Multiply(
+                            Matrix4x4.CreateTranslation(position.X, position.Y, depth),
+                            Matrix4x4.CreateScale(new Vector3(scale.X, scale.Y, 1))),
                         color,
                         text.HorizontalAlignment,
                         text.VerticalAlignment
@@ -331,7 +363,7 @@ public class Renderer : MoonTools.ECS.Renderer
         // var animation = Get<SpriteAnimation>(entity);
         // var sprite = animation.CurrentSprite;
         // var origin = animation.Origin;
-        var depth = -1f;
+        var depth = 1f;
         var colorBlend = Color.White;
         var colorOverlay = new Color(0, 0, 0, 0);
         var orientation = Has<Rotation>(entity) ? Get<Rotation>(entity).Value : 0.0f;
@@ -370,7 +402,7 @@ public class Renderer : MoonTools.ECS.Renderer
 
         if (Has<Depth>(entity))
         {
-            depth = -Get<Depth>(entity).Value;
+            depth = Get<Depth>(entity).Value;
         }
 
         // ArtSpriteBatch.Add(new Vector3(position.X + offset.X, position.Y + offset.Y, depth), 0, new Vector2(sprite.SliceRect.W, sprite.SliceRect.H) * scale, color, sprite.UV.LeftTop, sprite.UV.Dimensions);
@@ -408,6 +440,20 @@ public class Renderer : MoonTools.ECS.Renderer
             return false;
         }
         return !Get<Facing>(entity).Right;
+    }
+    public void Dipose() {
+        //RenderTexture
+//DepthTexture
+//TextPipeline
+//TextBatch
+//PointSampler
+//ArtSpriteBatch
+        RenderTexture.Dispose();
+        DepthTexture.Dispose();
+        TextPipeline.Dispose();
+        TextBatch.Dispose();
+        PointSampler.Dispose();
+        ArtSpriteBatch.Dispose();
     }
 
 }

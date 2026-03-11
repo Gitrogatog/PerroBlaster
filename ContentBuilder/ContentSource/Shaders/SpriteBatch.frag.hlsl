@@ -16,7 +16,7 @@ float4 main(Input input) : SV_Target0
     {
         discard;
     }
-    if(input.ColorOverlay.a > 0.5){
+    if(input.ColorOverlay.a > 0.02){
         // return float4(1.0f, 1.0f, 1.0f, 1.0f);
         return input.ColorOverlay;
     }

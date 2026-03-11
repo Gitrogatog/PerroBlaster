@@ -14,9 +14,10 @@ public static class TileConsts
 
 public static class Dimensions
 {
-    public const int GAME_W = 240;
+    public const int GAME_W = 320;
     public const int GAME_H = 240;
     public const int TILE_SIZE = 16;
+    public const float INV_TILE_SIZE = 1f / TILE_SIZE;
     public static int ROOM_X => ROOM_X_TILES * TILE_SIZE;
     public static int ROOM_Y => ROOM_Y_TILES * TILE_SIZE;
     public static int ROOM_X_TILES => 15;
@@ -32,14 +33,19 @@ public static class Globals
     public static int CameraX;
     public static int CameraY;
     public static int CameraXOffset => -Dimensions.GAME_W / 2;
-    public static int CameraYOffset => -4;
+    public static int CameraYOffset => -Dimensions.GAME_H / 2;
     public static int CheckpointX;
     public static int CheckpointY;
-    public static int CameraMinX => -100000;
-    public static int CameraMaxX => 100000;
+    public static int CameraMinX => 0;
+    public static int CameraMaxX;
+    public static int CameraMinY => 0;
+    public static int CameraMaxY;
     public static int DeathCount = 0;
     public static int CurrentRoomX = -1000;
     public static int CurrentRoomY = -1000;
+    public static int DefaultPlayerX => 0;
+    public static int DefaultPlayerY => 0;
+    public static double CurrentTime = Double.Epsilon;
     public static HashSet<(int, int)> ClearedRooms = new HashSet<(int, int)>();
 }
 

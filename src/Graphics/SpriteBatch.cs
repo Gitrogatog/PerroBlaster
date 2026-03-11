@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using MoonWorks.Graphics;
@@ -42,9 +44,17 @@ public class SpriteBatch
                         Format = renderTextureFormat,
                         BlendState = ColorTargetBlendState.NonPremultipliedAlphaBlend
                     }
-                ]
+                ],
+                HasDepthStencilTarget = true,
+                DepthStencilFormat = TextureFormat.D16Unorm
             },
-            DepthStencilState = DepthStencilState.Disable,
+            DepthStencilState = new DepthStencilState
+            {
+                EnableDepthTest = true,
+                EnableDepthWrite = true,
+                CompareOp = CompareOp.LessOrEqual
+
+            },
             MultisampleState = MultisampleState.None,
             PrimitiveType = PrimitiveType.TriangleList,
             RasterizerState = RasterizerState.CCW_CullNone,
@@ -56,6 +66,7 @@ public class SpriteBatch
 
         if (depthTextureFormat.HasValue)
         {
+            Console.WriteLine("depth texture format!");
             createInfo.TargetInfo.DepthStencilFormat = depthTextureFormat.Value;
             createInfo.TargetInfo.HasDepthStencilTarget = true;
 
@@ -65,6 +76,8 @@ public class SpriteBatch
                 EnableDepthWrite = true,
                 CompareOp = CompareOp.LessOrEqual
             };
+        } else {
+            Console.WriteLine("no depth");
         }
 
         GraphicsPipeline = GraphicsPipeline.Create(
@@ -188,6 +201,15 @@ public class SpriteBatch
         renderPass.BindIndexBuffer(QuadIndexBuffer, IndexElementSize.ThirtyTwo);
         renderPass.CommandBuffer.PushVertexUniformData(viewProjectionMatrices.View * viewProjectionMatrices.Projection);
         renderPass.DrawIndexedPrimitives(InstanceCount * 6, 1, 0, 0, 0);
+    }
+
+    public void Dispose() {
+        ComputePipeline.Dispose();
+        GraphicsPipeline.Dispose();
+        InstanceTransferBuffer.Dispose();
+        InstanceBuffer.Dispose();
+        QuadVertexBuffer.Dispose();
+        QuadIndexBuffer.Dispose();
     }
 }
 

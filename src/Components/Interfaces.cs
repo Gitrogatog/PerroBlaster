@@ -12,3 +12,5 @@ public interface AnimComponent
 {
     public SpriteAnimationInfoID Animation { get; }
 }
+
+public interface ITrigger;

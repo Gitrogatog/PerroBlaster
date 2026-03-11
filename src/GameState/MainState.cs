@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Numerics;
+using System.Xml;
 using ImGuiNET;
 using MoonTools.ECS;
 using MoonWorks;
@@ -8,6 +9,7 @@ using MoonWorks.Audio;
 using MoonWorks.Graphics;
 
 using MyGame.Components;
+using MyGame.Content;
 using MyGame.Data;
 using MyGame.Spawn;
 using MyGame.Systems;
@@ -40,9 +42,11 @@ public class MainState : GameState
     // PlayerExpandUI PlayerExpandUI;
     SystemGroup updateGroup;
     LoadSceneSystem loadSystem;
+    SystemGroup postLoadGroup;
     LoadLevelJSON loadLevelJSON;
+    Audio audio;
     int currentLevel = 0;
-    static uint windowSize = 2;
+    static uint windowSize = 3;
     static bool hideImgui => true;
     GameSceneType gameScene;
     // Input Input;
@@ -64,34 +68,48 @@ public class MainState : GameState
     {
         World = new World();
         EntityPrefabs.Init(World);
+        audio = new Audio(World, Game.AudioDevice);
         updateGroup = new SystemGroup(World)
             .Add(new DestroySystem<DestroyAtStartOfFrame>(World))
             .Add(new TimedComponentSystem<ColorOverlayTimer>(World))
             .Add(new TimedComponentSystem<CantShootTimer>(World))
             .Add(new TimedComponentSystem<CantMoveTimer>(World))
             .Add(new AddAfterTimeSystem<PlayStaticSFX>(World, true))
+            .Add(new AddAfterTimeSystem<PlayMusic>(World))
+            .Add(new AddAfterTimeSystem<ChangeLevel>(World))
+            .Add(new AddAfterTimeSystem<ChangeGameScene>(World))
+            .Add(new AddAfterTimeSystem<LerpAlpha>(World))
             .Add(new TimerSystem(World))
-            .Add(new Input(World, Game.Inputs, Game.MainWindow))
+            .Add(new Input2(World, Game.Inputs))
             .Add(new PlayerController(World))
-            .Add(new UpdateRotationSystem(World))
-            .Add(new EnemyBehaviorSystem(World))
+            // .Add(new UpdateRotationSystem(World))
+            // .Add(new EnemyBehaviorSystem(World))
+            .Add(new TileMotion(World))
             .Add(new Motion(World))
             .Add(new CollisionSystem(World))
             .Add(new PostCollision(World))
-            .Add(new OnEnterRoomSystem(World))
+            .Add(new FourDirectionAnimSystem(World))
+            .Add(new TileCollision(World))
+
+            .Add(new GrowUIBoxSystem(World))
+            .Add(new UIOptionSystem(World))
+            .Add(new DialogSystem(World))
             .Add(new AnimationSystem(World))
             .Add(new SetSpriteAnimationSystem(World))
             .Add(new UpdateSpriteAnimationSystem(World))
-            .Add(new HealthBarSystem(World))
             .Add(new MiscSpriteUpdateSystem(World))
             .Add(new CameraSystem(World))
             .Add(new AdvanceCharCountSystem(World))
 
-            .Add(new Audio(World, Game.AudioDevice))
+            .Add(audio)
+            .Add(new LerpAlphaSystem(World))
             .Add(new DestroySystem<DestroyAtEndOfFrame>(World))
             .Add(new RemoveSystem<TookDamageLastFrame>(World))
+            .Add(new RemoveSystem<FinishStepThisFrame>(World))
+            .Add(new RemoveSystem<AttemptTalkThisFrame>(World))
             .Add(new ReplaceSystem<TookDamageThisFrame, TookDamageLastFrame>(World));
         ;
+        postLoadGroup = new SystemGroup(World).Add(new EnterLevelSystem(World));
         loadSystem = new LoadSceneSystem(World);
         gameScene = GameSceneType.StartMenu;
 
@@ -124,6 +142,8 @@ public class MainState : GameState
     }
 
     void ChangeGameScene(GameSceneType scene){
+        Globals.CameraX = 0;
+        Globals.CameraY = 0;
         loadSystem.Update(default);
         while(World.Some<DestroyOnSceneChange>()){
             World.Destroy(World.GetSingletonEntity<DestroyOnSceneChange>());
@@ -131,26 +151,51 @@ public class MainState : GameState
         gameScene = scene;
         switch(scene){
             case GameSceneType.StartMenu:{
+                float startBlack = 1f;
+                float fadeIn = 0.5f;
+                // EntityPrefabs.CreateMessageEndOfFrame(new StartMusicAndSetVolume(1f, StreamingAudio.rm_opening1));
+                EntityPrefabs.CreateTimedMessage(new PlayMusic(StreamingAudio.rm_opening1), startBlack + fadeIn);
                 EntityPrefabs.CreateStartMenu();
+                var flickerArrow = World.CreateEntity();
+                World.Set(flickerArrow, new Position(Dimensions.GAME_W / 2, Dimensions.GAME_H - 4));
+                World.Set(flickerArrow, new SpriteAnimation(SpriteAnimations.ui_arrow_down));
+                // EntityPrefabs.CreateText(60, 60, 12, Fonts.RM2000AltID, "WOAHHHHH");
+                // EntityPrefabs.CreateDialogText(TextStorage.GetID("dialog text"), 10, 10);
+                // var e1 = World.CreateEntity();
+                // World.Set(e1, new DestroyOnLoad());
+                // World.Set(e1, new SpriteAnimation(SpriteAnimations.daisy_down));
+                // World.Set(e1, SpriteAnimations.daisy_down.Frames[0]);
+                // World.Set(e1, new Position(100, 100));
+                // World.Set(e1, new Depth(0.4f));
+                // World.Set(e1, new ColorBlend(new Color(1, 1, 1, 0.5f)));
+                // var e2 = World.CreateEntity();
+                // World.Set(e2, new DestroyOnLoad());
+                // World.Set(e2, new SpriteAnimation(SpriteAnimations.water));
+                // World.Set(e2, new Position(106, 100));
+                // World.Set(e2, new Depth(0.5f));
                 break;
             }
             case GameSceneType.Level:{
                 StartGame();
                 // EntityPrefabs.CreateMessage(new StartMusicAndSetVolume(2f, 1 ));
-                EntityPrefabs.CreateMessageEndOfFrame(new StartMusicAndSetVolume(0.5f, 0));
+                EntityPrefabs.CreateMessageEndOfFrame(new PlayMusic(StreamingAudio.rm_opening1));
                 var clearColorEntity = World.CreateEntity();
                 // World.Set(clearColorEntity, new ClearColor(new Color(243, 205, 172)));
-                World.Set(clearColorEntity, new ClearColor(Colors.Background)); // new Color(71, 50, 75)
+                World.Set(clearColorEntity, new ClearColor(new Color(0, 0, 0, 255))); // new Color(71, 50, 75)
                 World.Set(clearColorEntity, new DestroyOnSceneChange());
+                var testTextEntity = World.CreateEntity();
+                World.Set(testTextEntity, new Position(10, 176));
+                // World.Set(testTextEntity, new SpriteAnimation(SpriteAnimations.start_menu_text));
                 break;
             }
             case GameSceneType.EndMenu:{
-                for(int i = 0; i <= 2; i++){
-                    EntityPrefabs.CreateMessageEndOfFrame(new StopMusic(i));
-                }
+                // for(int i = 0; i <= 2; i++){
+                //     EntityPrefabs.CreateMessageEndOfFrame(new StopMusic(i));
+                // }
+                World.Set(World.CreateEntity(), new StopAllMusic());
                 // EntityPrefabs.CreateMessageEndOfFrame(new PlayStaticSFX(StaticAudio.applause));
                 
-                EntityPrefabs.CreateEndMenu();
+                // EntityPrefabs.CreateEndMenu();
                 break;
             }
         }
@@ -172,13 +217,13 @@ public class MainState : GameState
     }
     void StartGame(int level)
     {
-        loadLevelJSON.ReadFile("ContentStatic/Data/big_levels.json");
+        loadLevelJSON.ReadFile("ContentStatic/Data/cookie_levels.json");
         ChangeLevel(level);
     }
     void StartGame()
     {
-        loadLevelJSON.ReadFile("ContentStatic/Data/big_levels.json");
-        ChangeLevel(0);
+        loadLevelJSON.ReadFile("ContentStatic/Data/cookie_levels.json");
+        ChangeLevel(3);
         // loadLevelJSON.ReadLevel(0);
         // currentLevel = 0;
     }
@@ -190,6 +235,7 @@ public class MainState : GameState
         Globals.CurrentRoomX = -1000;
         Globals.CurrentRoomY = -1000;
         currentLevel = level;
+        postLoadGroup.Update(default);
     }
 
     void ImguiUpdate(float dt)
@@ -221,19 +267,16 @@ public class MainState : GameState
 
     public override void Update(TimeSpan delta)
     {
-        
         long startTime = Stopwatch.GetTimestamp();
+        Globals.CurrentTime += delta.TotalSeconds;
 
         if (World.Some<ChangeLevel>())
         {
             int level = World.GetSingleton<ChangeLevel>().LevelID;
+            Console.WriteLine($"main chaning level: {level}");
             ChangeLevel(level);
         }
         else if (World.Some<ShouldPerformReset>())
-        {
-            RestartCurrentLevel();
-        }
-        else if (World.Some<DeathScreen>() && GlobalInput.Current.Shoot.IsPressed)
         {
             RestartCurrentLevel();
         }
@@ -247,20 +290,25 @@ public class MainState : GameState
             else if (GlobalInput.Current.Refresh.IsPressed)
             {
                 // RestartCurrentLevel();
-                ChangeGameScene(gameScene);
+                // ChangeGameScene(gameScene);
+                World.Dispose();
+                Renderer.Dipose();
+                audio.Dispose();
+                Console.WriteLine("resetting world!");
+                Start();
             }
 #endif
         
-        if(GlobalInput.Current.AltShoot.IsPressed && gameScene == GameSceneType.StartMenu){
-            ChangeGameScene(GameSceneType.Level);
-        }
+        // if(GlobalInput.Current.Interact.IsPressed && gameScene == GameSceneType.StartMenu){
+        //     ChangeGameScene(GameSceneType.Level);
+        // }
         else if(World.Some<ChangeGameScene>()){
             ChangeGameScene(World.GetSingleton<ChangeGameScene>().Scene);
             while(World.Some<ChangeGameScene>()){
                 World.Destroy(World.GetSingletonEntity<ChangeGameScene>());
             }
         }
-        if(GlobalInput.Current.CloseWindow.IsPressed){
+        if(World.Some<CloseGameWindow>()){
             Game.Quit();
         }
 
@@ -268,14 +316,14 @@ public class MainState : GameState
 
         // ImguiController.UpdateOrClear((float)delta.TotalSeconds, hideImgui);
         double elapsed = Stopwatch.GetElapsedTime(startTime).TotalSeconds;
-        if(GlobalInput.Current.WindowPlus.IsPressed && windowSize < 6){
-            windowSize++;
-            ChangeWindowSize();
-        }
-        else if(GlobalInput.Current.WindowMinus.IsPressed && windowSize > 1){
-            windowSize--;
-            ChangeWindowSize();
-        }
+        // if(GlobalInput.Current.WindowPlus.IsPressed && windowSize < 6){
+        //     windowSize++;
+        //     ChangeWindowSize();
+        // }
+        // else if(GlobalInput.Current.WindowMinus.IsPressed && windowSize > 1){
+        //     windowSize--;
+        //     ChangeWindowSize();
+        // }
         // Console.WriteLine($"entity count: {World.Debug_GetEntities(typeof(Position)).Count()}");
         // Console.WriteLine($"exists global zombie: {World.Some<GlobalZombieMode>()}");
         // Console.WriteLine();

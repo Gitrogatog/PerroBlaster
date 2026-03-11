@@ -1,5 +1,6 @@
 using System;
 using MoonTools.ECS;
+using MyGame.Components;
 namespace MyGame.Systems;
 
 public class _DefaultSystem : MoonTools.ECS.System

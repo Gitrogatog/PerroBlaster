@@ -23,7 +23,7 @@ namespace MyGame
             {
                 WindowWidth = Dimensions.GAME_W,
                 WindowHeight = Dimensions.GAME_H,
-                WindowTitle = "AXE",
+                WindowTitle = "CookieCutterTemplate",
                 ScreenMode = ScreenMode.Windowed
             };
 #else
@@ -31,7 +31,7 @@ namespace MyGame
 			{
 				WindowWidth = Dimensions.GAME_W,
 				WindowHeight = Dimensions.GAME_H,
-				WindowTitle = "AXE",
+				WindowTitle = "CookieCutterTemplate",
 				ScreenMode = ScreenMode.Windowed
 			};
 #endif

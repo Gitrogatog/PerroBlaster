@@ -12,6 +12,18 @@ public class LoadSceneSystem : MoonTools.ECS.System
 
     public override void Update(TimeSpan delta)
     {
+        if(Some<ControlledByPlayer>()) {
+            var entity = GetSingletonEntity<ControlledByPlayer>();
+            if(TryGet<SpriteAnimation>(entity, out SpriteAnimation anim)) {
+                var data = new LastPlayerData(anim);
+                if(Some<LastPlayerData>()) {
+                    Set(GetSingletonEntity<LastPlayerData>(), data);
+                }
+                else {
+                    Set(CreateEntity(), data);
+                }
+            }
+        }
         while (Some<DestroyOnLoad>())
         {
             Destroy(GetSingletonEntity<DestroyOnLoad>());

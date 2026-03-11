@@ -143,7 +143,7 @@ public class LoadState : GameState
     private void AddString(string text, int pixelSize, Position position, float rotation)
     {
         TextBatch.Add(
-            Fonts.FromID(Fonts.PixeltypeID),
+            Fonts.FromID(Fonts.RM2000AltID),
             text,
             pixelSize,
             Matrix4x4.CreateRotationX(-rotation) * Matrix4x4.CreateTranslation(position.X, position.Y, -1),

@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+using CustomTilemap;
 using MoonTools.ECS;
 using MoonWorks.Input;
 using MyGame.Components;
@@ -27,4 +30,12 @@ public static class GlobalCollision {
             Collisions[i] = new List<(Entity, Entity)>();
         }
     }
+}
+
+public static class GlobalTilemap {
+    public static Tilemap Tilemap;
+    public static bool IsWithinBounds(int x, int y) => x >= 0 && y >= 0 && x < Tilemap.xTiles && y < Tilemap.yTiles;
+    public static bool IsBlocked(int x, int y) => Tilemap.IsBlocked(x, y);
+    public static List<Entity> GetEntities(int x, int y) => Tilemap.tileContents[Tilemap.xy_id(x, y)];
+    public static void ChangePosition(Entity entity, int x, int y) => Tilemap.ChangePosition(entity, x, y);
 }

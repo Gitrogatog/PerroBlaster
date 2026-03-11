@@ -28,7 +28,10 @@ public class LoadLevelJSON : MoonTools.ECS.Manipulator
     Dictionary<(int, int), (int, int)> tileSliceDict = new Dictionary<(int, int), (int, int)>(300);
     Dictionary<(int, int), Color> colorsDict = new Dictionary<(int, int), Color>(300);
     Dictionary<string, Dictionary<int, Color>> intGridToColorDict = new Dictionary<string, Dictionary<int, Color>>();
-    Dictionary<int, string> tileIdToCollisionType = new Dictionary<int, string>();
+    Dictionary<int, Dictionary<string, HashSet<int>>> tilesetIdToEnum = new Dictionary<int, Dictionary<string, HashSet<int>>>();
+    Dictionary<int, Dictionary<int, string>> tilesetIdToCustomData = new Dictionary<int, Dictionary<int, string>>();
+    Dictionary<string, int> levelIds = new Dictionary<string, int>();
+    // Dictionary<int, string[]> tileIdToCollisionType = new Dictionary<int, string[]>();
 
 
     public LoadLevelJSON(MoonTools.ECS.World world, Vector2I tileSize, int tileMult) : base(world)
@@ -50,17 +53,35 @@ public class LoadLevelJSON : MoonTools.ECS.Manipulator
         jsonObject = RootobjectReader.ReadJson(filePath);
         // PreloadColorsFromDefs();
         Console.WriteLine($"READING JSON at {Path.GetFullPath(filePath)} : levels count: {jsonObject.levels.Length}");
-        var tileset = jsonObject.defs.tilesets[0];
-        foreach (var enumTagData in tileset.enumTags)
-        {
-            string tag = enumTagData.enumValueId;
-            foreach (int tileId in enumTagData.tileIds)
-            {
-                tileIdToCollisionType[tileId] = tag;
-            }
-        }
-        // InitTilemap();
+        foreach(var tileset in jsonObject.defs.tilesets) {
 
+            var enumSet = new Dictionary<string, HashSet<int>>();
+            foreach (var enumTagData in tileset.enumTags)
+            {
+                string tag = enumTagData.enumValueId;
+                HashSet<int> set= new HashSet<int>(enumTagData.tileIds.Length);
+                foreach (int? tileId in enumTagData.tileIds)
+                {
+                    if(tileId.HasValue) {
+                        set.Add(tileId.Value);
+                    }
+                    
+                }
+                enumSet[tag] = set;
+            }
+            tilesetIdToEnum[tileset.uid] = enumSet;
+
+            var customDataSet = new Dictionary<int, string>();
+            foreach(var customData in tileset.customData) {
+                if(customData.data != "" && customData.data != null) {
+                    customDataSet[customData.tileId] = customData.data;
+                }
+            }
+            tilesetIdToCustomData[tileset.uid] = customDataSet;
+        }
+        for(int i = 0; i < jsonObject.levels.Length; i++) {
+            levelIds[jsonObject.levels[i].iid] = i;
+        }
     }
     public bool ReadLevel(int id)
     {
@@ -81,54 +102,61 @@ public class LoadLevelJSON : MoonTools.ECS.Manipulator
         {
 
         }
-        Layerinstance layerInstance = GetLayerInstanceByName(level, "Tiles");
-        // read through 
-        Sprite tileGridSprite = SpriteAnimations.TilesAbstract.Frames[0];
-
-        foreach (var tile in layerInstance.gridTiles)
-        {
-            (int levelX, int levelY) = ((int)tile.px[0], (int)tile.px[1]); // position of tile in the ldtk world grid
-            (int spriteX, int spriteY) = ((int)tile.src[0], (int)tile.src[1]);
-            Sprite tileSprite = tileGridSprite.Slice(spriteX, spriteY, tileSize.X, tileSize.Y);
-            var entity = EntityPrefabs.CreateTile(LevelToWorld(levelX), LevelToWorld(levelY), tileSprite);
-            int tileId = (int)tile.t;
-            if (tileIdToCollisionType.TryGetValue(tileId, out string enumId))
-            {
-                switch (enumId)
-                {
-                    case "SolidFull":
-                        {
-                            EntityPrefabs.AddSolidCollision(entity, new Rectangle(16, 16, EffectorFlags.None, EffectedFlags.IsWall));
-                            break;
-                        }
-                    case "RoofTop":
-                        {
-                            // EntityPrefabs.AddSolidCollision(entity, new Rectangle(-8, -6, 16, 4));
-                            break;
-                        }
-                }
-            }
-        }
-        Stores.PathStorage.Reset();
-        if(true) { // Stores.PathStorage.IsEmpty
-            foreach(Toc toc in rootobject.toc) {
-                if(toc.identifier == "Path") {
-                    foreach(var instanceData in toc.instancesData) {
-                        Stores.PathStorage.Register(instanceData.iids.entityIid, new List<Vector2>());
-                    }
-                    
-                }
-            }
-        }
+        int levelWidth = level.pxWid / Dimensions.TILE_SIZE;
+        int levelHeight = level.pxHei / Dimensions.TILE_SIZE;
+        Console.WriteLine($"level width:{levelWidth} height:{levelHeight}");
+        GlobalTilemap.Tilemap = new CustomTilemap.Tilemap(World, levelWidth, levelHeight);
+        Globals.CameraMaxX = Math.Max(level.pxWid - Dimensions.GAME_W, 0);
+        Globals.CameraMaxY = Math.Max(level.pxHei - Dimensions.GAME_H, 0);
+        // TopTiles
+        // TopButBelowPlayerTiles
+        // MiniTiles
+        // Tiles16
         
-        layerInstance = GetLayerInstanceByName(level, "Entities");
-        if(layerInstance.__type == "Entities"){
+        // read through 
+        Sprite tileGridSprite = SpriteAnimations.Tiles.Frames[0];
+        ReadVisualTiles(level, tileGridSprite, "Tiles16", 16, 0.9f);
+        ReadVisualTiles(level, tileGridSprite, "MiniTiles", 8, 0.8f);
+        ReadVisualTiles(level, tileGridSprite, "TopButBelowPlayerTiles", 16, 0.7f);
+        ReadVisualTiles(level, tileGridSprite, "TopTiles", 16, 0.2f);
+        
+        Layerinstance layerInstance = GetLayerInstanceByName(level, "Entities");
+        if(layerInstance.__type == "Entities") {
             foreach (var entityInstance in layerInstance.entityInstances)
             {
                 ReadEntity(entityInstance);
             }
         }
         
+    }
+    void ReadVisualTiles(Level level, Sprite tileGridSprite, string layerName, int localTileSize, float depth) {
+        Layerinstance layerInstance = GetLayerInstanceByName(level, layerName);
+        var tileEnumSet = tilesetIdToEnum[layerInstance.__tilesetDefUid.Value];
+        var customDataSet = tilesetIdToCustomData[layerInstance.__tilesetDefUid.Value];
+        foreach (var tile in layerInstance.gridTiles)
+        {
+            (int levelX, int levelY) = ((int)tile.px[0], (int)tile.px[1]); // position of tile in the ldtk world grid
+            (int spriteX, int spriteY) = ((int)tile.src[0], (int)tile.src[1]);
+            Sprite tileSprite = tileGridSprite.Slice(spriteX, spriteY, localTileSize, localTileSize);
+            int tileId = (int)tile.t;
+            // bool isAnimated = tilesetIdToEnum["Animated"].Contains(tileId);
+            bool hasCollision = tileEnumSet["Solid"].Contains(tileId);
+            MoonTools.ECS.Entity entity;
+            if(customDataSet.TryGetValue(tileId, out string animName)) {
+                SpriteAnimationInfo tileAnim = SpriteAnimations.Lookup(animName);
+                if(tileAnim == null) {
+                    Console.WriteLine($"couldnt find animation for {animName}");
+
+                }
+                entity = EntityPrefabs.CreateAnimatedTile(levelX + localTileSize / 2, levelY + localTileSize / 2, tileAnim, depth);
+            } else {
+                entity = EntityPrefabs.CreateTile(levelX + localTileSize / 2, levelY + localTileSize / 2, tileSprite, depth);
+            }
+            if(hasCollision) {
+                EntityPrefabs.AddSolidCollision(entity, new Rectangle(16, 16, EffectorFlags.None, EffectedFlags.IsWall));
+                EntityPrefabs.AddSolidTileCollision(entity, levelX / 16, levelY / 16);
+            }
+        }
     }
     int LevelToWorld(int levelPos) => (levelPos + tileSize.X / 2) * tileMult;
     int TileToWorld(int tilePos) => LevelToWorld(tilePos * 16);
@@ -166,99 +194,77 @@ public class LoadLevelJSON : MoonTools.ECS.Manipulator
     void ReadEntity(Entityinstance entityInstance)
     {
         Vector2I position = new Vector2I(LevelToWorld(entityInstance.px[0]), LevelToWorld(entityInstance.px[1])); //+ tileSize / 2;
+        int tileX = entityInstance.__grid[0];
+        int tileY = entityInstance.__grid[1];
         // Console.WriteLine($"read entity at {position}");
         JsonElement field;
         Console.WriteLine($"entity isntance: {entityInstance.__identifier}");
-        int roomX = position.X / Dimensions.ROOM_X;
-        int roomY = position.Y / Dimensions.ROOM_Y;
         switch (entityInstance.__identifier)
         {
 
             case "Player":
                 {
-                    EntityPrefabs.CreatePlayer(position.X, position.Y);
-                    Globals.CheckpointX = position.X;
-                    Globals.CheckpointY = position.Y;
-                    Globals.CameraX = position.X;
-                    Globals.CameraY = position.Y;
+                    var entity = CreateEntity();
+                    Set(entity, new DestroyOnLoad());
+                    Set(entity, new InitialPlayerSpawn(tileX, tileY));
+                    // EntityPrefabs.CreatePlayer(tileX, tileY);
                     break;
                 }
-            case "EnterFence": {
-                var entity = CreateEntity();
-                Set(entity, new DestroyOnLoad());
-                Set(entity, new RoomID(roomX, roomY));
-
-                Set(entity, new CollisionForceMoveForOneFrame(MyConvertEnum.CardinalToVec(MyConvertEnum.ToCardinal(GetStringField(entityInstance, "Cardinal")))));
-                Set(entity, new RectangleSpawnPoint(entityInstance.px[0], entityInstance.px[1], entityInstance.width, entityInstance.height, RectThingType.EnterFence));
-                break;
-            }
-            case "ExitFence": {
-                var entity = CreateEntity();
-                Set(entity, new DestroyOnLoad());
-                Set(entity, new RoomID(roomX, roomY));
-                Set(entity, new RectangleSpawnPoint(entityInstance.px[0], entityInstance.px[1], entityInstance.width, entityInstance.height, RectThingType.ExitFence));
-                // var entity = CreateEntity();
-                // Set(entity, new Position(position.X, position.Y));
-                // Set(entity, new Solid());
-                // Set(entity, new CanInteract());
-                // Set(entity, new Rectangle(0, 0, entityInstance.width, entityInstance.height, EffectorFlags.None, EffectedFlags.IsWall));
-                // Set(entity, new DrawAsRectangle());
+            // case "Text": {
+            //     var entity = EntityPrefabs.CreateText(position.X, position.Y, 12, Fonts.PixeltypeID, GetStringField(entityInstance, "String"));
+            //     if(GetBoolField(entityInstance, "Black")) {
+            //         Set(entity, new ColorBlend(Color.Black));
+            //     }
+            //     break;
+            // }
+            case "LevelTransition": {
+                var entity = EntityPrefabs.CreateEntityOnTileGrid(tileX, tileY);
                 // Set(entity, new DestroyOnLoad());
-            
+                // Set(entity, new TilePosition(tileX, tileY));
+                Set(entity, new UUID(TextStorage.GetID(entityInstance.iid)));
+                string levelTarget = GetLevelRef(entityInstance, "Location");
+                string exitTarget = GetEntityRef(entityInstance, "Location");
+                Set(entity, new ChangeLevelOnInteract(levelIds[levelTarget], TextStorage.GetID(exitTarget)));
+                AddStepTalkInteract(entity, entityInstance);
                 break;
             }
-            case "PitTest": {
-                var entity = CreateEntity();
-                Set(entity, new Position(position.X, position.Y));
-                // Set(entity, new Solid());
-                Set(entity, new CanInteract());
-                Set(entity, new Rectangle(0, 0, entityInstance.width, entityInstance.height, EffectorFlags.None, EffectedFlags.IsPit));
-                Set(entity, new DrawAsRectangle());
-                Set(entity, new ColorBlend(Color.Blue));
-                Set(entity, new DestroyOnLoad());
+            case "LevelExit": {
+                var entity = EntityPrefabs.CreateEntityOnTileGrid(tileX, tileY);
+                // Set(entity, new DestroyOnLoad());
+                // Set(entity, new TilePosition(tileX, tileY));
+                Set(entity, new UUID(TextStorage.GetID(entityInstance.iid)));
                 break;
             }
-            case "Chaser": {
-                EntityPrefabs.CreateEnemySpawnPoint(position.X, position.Y, EnemyType.Circle);
-                Console.WriteLine("Creating chaser!");
+            case "Dialog": {
+                Console.WriteLine("creating dialog");
+                var entity = EntityPrefabs.CreateEntityOnTileGrid(tileX, tileY);
+                string dialog = GetStringField(entityInstance, "Dialog");
+                Set(entity, new DisplayDialogOnInteract(TextStorage.GetID(dialog), CloseDialogAction.None));
+                Set(entity, new CanBeTalked());
                 break;
             }
-            case "Shooter": {
-                // var entity = EntityPrefabs.CreateBaseEnemy(position.X, position.Y, 16, 16);
-                EntityPrefabs.CreateEnemySpawnPoint(position.X, position.Y, EnemyType.Triangle);
+            case "PlayMusic": {
+                string musicId = GetStringField(entityInstance, "MusicID");
+                StreamingSoundID id = musicId switch {
+                    "Castle" => StreamingAudio.castle,
+                    "Dungeon" => StreamingAudio.dungeon,
+                    "Overworld" => StreamingAudio.overworld1,
+                    "Town" => StreamingAudio.fortress_city,
+                    "Hell" => StreamingAudio.castle,
+                    _ => StreamingAudio.rm_opening1
+                };
+                Set(CreateEntity(), new StopMusicUnless(id));
+                Set(CreateEntity(), new AddAfterTime<PlayMusic>(0.5f, new PlayMusic(id)));
                 break;
             }
-            case "ShooterPath": {
-                // var entity = EntityPrefabs.CreateBaseEnemy(position.X, position.Y, 16, 16);
-                var entity = EntityPrefabs.CreateEnemySpawnPoint(position.X, position.Y, EnemyType.Triangle);
-                var pathRef = GetEntityRef(entityInstance, "PathRef");
-                Set(entity, new FollowPath(Stores.PathStorage.GetID(pathRef), GetIntField(entityInstance, "StartPoint")));
-                if(GetBoolField(entityInstance, "InvertPathFollow")){
-                    Set(entity, new InvertPath());
-                }
-                break;
-            }
-            case "Path": {
-                List<Vector2> points = Stores.PathStorage.Get(Stores.PathStorage.GetID(entityInstance.iid));
-                points.Add(new Vector2(position.X, position.Y));
-                foreach(var jsonElement in GetFieldValue(entityInstance, "Points").EnumerateArray()) {
-                    Console.WriteLine($"point element: {jsonElement}");
-                    var pointDict = jsonElement.Deserialize<Dictionary<string, int>>();
-                    points.Add(new Vector2(TileToWorld(pointDict["cx"]), TileToWorld(pointDict["cy"])));
-                }
-                foreach(Vector2 point in points){
-                    Console.WriteLine($"added point: {point}");
-                }
-
-                break;
-            }
-            case "Text": {
-                var entity = EntityPrefabs.CreateText(position.X, position.Y, 12, Fonts.PixeltypeID, GetStringField(entityInstance, "String"));
-                if(GetBoolField(entityInstance, "Black")) {
-                    Set(entity, new ColorBlend(Color.Black));
-                }
-                break;
-            }
+        }
+    }
+    void AddStepTalkInteract(MoonTools.ECS.Entity entity, Entityinstance entityInstance) {
+        if(GetBoolField(entityInstance, "StepInteract")) {
+            Set(entity, new CanBeStepped());
+        }
+        if(GetBoolField(entityInstance, "TalkInteract")) {
+            Set(entity, new CanBeTalked());
         }
     }
     JsonElement GetFieldValue(Entityinstance entity, string name) => (JsonElement)GetFieldFromName(entity, name).__value;
@@ -267,6 +273,7 @@ public class LoadLevelJSON : MoonTools.ECS.Manipulator
     float GetFloatField(Entityinstance entity, string name) => GetFieldValue(entity, name).GetSingle();
     string GetStringField(Entityinstance entity, string name) => GetFieldValue(entity, name).GetString();
     string GetEntityRef(Entityinstance entity, string name) => GetFieldValue(entity, name).GetProperty("entityIid").GetString();
+    string GetLevelRef(Entityinstance entity, string name) => GetFieldValue(entity, name).GetProperty("levelIid").GetString();
 
     // Point GetPointField(Entityinstance entity, string name) => (Point)(GetFieldFromName(entity, name) as PointField).Value[0];
     Fieldinstance GetFieldFromName(Entityinstance entity, string name)
@@ -294,25 +301,6 @@ public class LoadLevelJSON : MoonTools.ECS.Manipulator
         value = default;
         return false;
     }
-    // void PreloadColorsFromDefs()
-    // {
-    //     foreach (var layerDef in jsonObject.defs.layers)
-    //     {
-    //         if (layerDef.type == "IntGrid")
-    //         {
-    //             var colorArr = layerDef.intGridValues;
-    //             Dictionary<int, Color> idToColor = new Dictionary<int, Color>(colorArr.Length);
-    //             foreach (var entry in colorArr)
-    //             {
-    //                 idToColor[(int)entry.value] = ColorUtils.HexStringToColor(entry.color.Substring(1));
-    //                 Console.WriteLine(idToColor[(int)entry.value]);
-    //             }
-    //             intGridToColorDict[layerDef.identifier] = idToColor;
-    //         }
-            
-    //     }
-
-    // }
     void CreateColorSpritesFromIntgridLayer(Level level, string name)
     {
         var layer = GetLayerInstanceByName(level, name);

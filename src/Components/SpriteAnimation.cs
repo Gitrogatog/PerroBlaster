@@ -8,7 +8,7 @@ namespace MyGame.Components;
 public struct SpriteAnimation
 {
     public SpriteAnimationInfoID SpriteAnimationInfoID { get; }
-    public int FrameRate { get; }
+    public float FrameRate { get; }
     public bool Loop { get; }
     public Vector2 Origin { get; }
     public float RawFrameIndex { get; }
@@ -33,29 +33,39 @@ public struct SpriteAnimation
 
     public SpriteAnimationInfo SpriteAnimationInfo => SpriteAnimationInfo.FromID(SpriteAnimationInfoID);
     public Sprite CurrentSprite => SpriteAnimationInfo.Frames[FrameIndex];
-    public bool Finished => !Loop && FrameRate != 0 && RawFrameIndex >= SpriteAnimationInfo.Frames.Length - 1;
+    public bool Finished => !Loop && FrameRate != 0 && (RawFrameIndex >= SpriteAnimationInfo.Frames.Length - 1 || RawFrameIndex < 0);
     public float TotalTime => SpriteAnimationInfo.Frames.Length / FrameRate;
 
-    public int TimeOf(int frame)
+    public float TimeOf(int frame)
     {
         return frame / FrameRate;
     }
 
     // FIXME: this isn't really necessary
-    public static SpriteAnimation ForceFrame(
-        SpriteAnimationInfo spriteAnimationInfo,
+    public SpriteAnimation ForceFrame(
         int frameIndex
     )
     {
         return new SpriteAnimation(
-            spriteAnimationInfo,
-            0,
-            false,
+            SpriteAnimationInfo,
+            FrameRate,
+            Loop,
             frameIndex
         );
     }
+    public SpriteAnimation ForceRawFrame(
+        float rawFrameIndex
+    )
+    {
+        return new SpriteAnimation(
+            SpriteAnimationInfo,
+            FrameRate,
+            Loop,
+            rawFrameIndex
+        );
+    }
 
-    public SpriteAnimation ChangeFramerate(int frameRate)
+    public SpriteAnimation ChangeFramerate(float frameRate)
     {
         return new SpriteAnimation(
             SpriteAnimationInfo,
@@ -102,7 +112,7 @@ public struct SpriteAnimation
 
     public SpriteAnimation(
         SpriteAnimationInfo spriteAnimationInfo,
-        int frameRate
+        float frameRate
     )
     {
         SpriteAnimationInfoID = spriteAnimationInfo.ID;
@@ -114,7 +124,7 @@ public struct SpriteAnimation
 
     public SpriteAnimation(
         SpriteAnimationInfo spriteAnimationInfo,
-        int frameRate,
+        float frameRate,
         bool loop
     )
     {
@@ -127,7 +137,7 @@ public struct SpriteAnimation
 
     public SpriteAnimation(
         SpriteAnimationInfo spriteAnimationInfo,
-        int frameRate,
+        float frameRate,
         bool loop,
         int frameIndex
     )
@@ -141,7 +151,7 @@ public struct SpriteAnimation
 
     public SpriteAnimation(
         SpriteAnimationInfo spriteAnimationInfo,
-        int frameRate,
+        float frameRate,
         bool loop,
         float rawFrameIndex
     )
@@ -155,7 +165,7 @@ public struct SpriteAnimation
 
     public SpriteAnimation(
         SpriteAnimationInfo spriteAnimationInfo,
-        int frameRate,
+        float frameRate,
         bool loop,
         float rawFrameIndex,
         Vector2 origin

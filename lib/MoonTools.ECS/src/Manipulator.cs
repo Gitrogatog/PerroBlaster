@@ -12,6 +12,16 @@ public abstract class Manipulator : EntityComponentReader
 	protected void Set<TComponent>(in Entity entity) where TComponent : unmanaged => World.Set<TComponent>(entity, new TComponent());
 
 	protected void Remove<TComponent>(in Entity entity) where TComponent : unmanaged => World.Remove<TComponent>(entity);
+	protected void DestroyAll<TComponent>() where TComponent : unmanaged {
+		while(Some<TComponent>()) {
+			Destroy(GetSingletonEntity<TComponent>());
+		}
+	}
+	protected void RemoveAll<TComponent>() where TComponent : unmanaged {
+		while(Some<TComponent>()) {
+			Remove<TComponent>(GetSingletonEntity<TComponent>());
+		}
+	}
 
 	protected void Relate<TRelationKind>(in Entity entityA, in Entity entityB, TRelationKind relationData) where TRelationKind : unmanaged => World.Relate(entityA, entityB, relationData);
 	protected void Unrelate<TRelationKind>(in Entity entityA, in Entity entityB) where TRelationKind : unmanaged => World.Unrelate<TRelationKind>(entityA, entityB);

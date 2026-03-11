@@ -73,7 +73,7 @@ public static class ImguiController
             // var entity = World.GetSingletonEntity<DisplayCharCount>();
             // World.Set(entity, new DisplayCharCount(input1));
             // Console.WriteLine("did updat display char count");
-            EntityPrefabs.ChangeLevel(input1);
+            // EntityPrefabs.ChangeLevel(input1);
         }
 
         // ImGui.PopStyleVar(5);

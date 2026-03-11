@@ -8,8 +8,8 @@ namespace MyGame.Components;
 public enum GameSceneType {
     StartMenu, Level, EndMenu,
 }
-public enum AxeState {
-    Held, Thrown, Stuck, Recalled
+public enum CharacterType {
+    Valsu, Lejes, Lux, Daisy
 }
 public enum ClickableState
 {
@@ -23,7 +23,10 @@ public enum BulletPattern {
 }
 public enum ThingType
 {
-    Player, Bunny, RushBunny, TumbleBunny, ClimbBunny, FallBunny, Explosion
+    CloudMenuOpen, DennyMenuOpen, StartMenu, DialogAdvanceArrow
+}
+public enum CloseDialogAction {
+    None, PlayGameOverSFX, StartFakeBattle
 }
 public enum TileType
 {

@@ -17,7 +17,6 @@ public readonly record struct DontDraw();
 public readonly record struct DontDamage;
 public readonly record struct DontShoot;
 public readonly record struct Colliding();
-public readonly record struct Throwing(float Progress);
 public readonly record struct Offset(float X, float Y)
 {
     public Offset(Vector2 input) : this(input.X, input.Y) { }
