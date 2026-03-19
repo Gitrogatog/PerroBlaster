@@ -61,7 +61,7 @@ public class UpdateSpriteAnimationSystem : MoonTools.ECS.System
     public void UpdateSpriteAnimation(Entity entity, float dt)
     {
         var spriteAnimation = Get<SpriteAnimation>(entity).Update(dt);
-        if(Has<IsDialogBox>(entity)) Console.WriteLine($"rawframe: {spriteAnimation.RawFrameIndex}");
+        // if(Has<IsDialogBox>(entity)) Console.WriteLine($"rawframe: {spriteAnimation.RawFrameIndex}");
         Set(entity, spriteAnimation);
 
         if (spriteAnimation.Finished)

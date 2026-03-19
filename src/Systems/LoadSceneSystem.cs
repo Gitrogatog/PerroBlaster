@@ -15,7 +15,8 @@ public class LoadSceneSystem : MoonTools.ECS.System
         if(Some<ControlledByPlayer>()) {
             var entity = GetSingletonEntity<ControlledByPlayer>();
             if(TryGet<SpriteAnimation>(entity, out SpriteAnimation anim)) {
-                var data = new LastPlayerData(anim);
+                var direction = Has<FacingDirection>(entity) ? Get<FacingDirection>(entity) : new FacingDirection(0, 1);
+                var data = new LastPlayerData(anim, direction);
                 if(Some<LastPlayerData>()) {
                     Set(GetSingletonEntity<LastPlayerData>(), data);
                 }

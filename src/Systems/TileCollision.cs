@@ -24,9 +24,12 @@ public class TileCollision : MoonTools.ECS.System
         if(!Some<ControlledByPlayer>()) return;
         var entity = GetSingletonEntity<ControlledByPlayer>();
         if(Has<MoveToTile>(entity)) return;
+        if(!Has<TilePosition>(entity)) return;
         (int x, int y) = Get<TilePosition>(entity);
+        
         if(Has<FinishStepThisFrame>(entity)) {
-            Console.WriteLine("running finish step check!");
+            // Console.WriteLine($"step pos: {x} {y}");
+            // Console.WriteLine("running finish step check!");
             List<Entity> targets = GlobalTilemap.GetEntities(x, y);
             foreach(var target in targets) {
                
@@ -55,6 +58,9 @@ public class TileCollision : MoonTools.ECS.System
         }
     }
     void RunInteract(Entity entity, Entity target) {
+        if(Has<PlaySFXOnInteract>(target)) {
+            EntityPrefabs.PlaySFX(Get<PlaySFXOnInteract>(target).ID);
+        }
         if(Has<ChangeLevelOnInteract>(target)) {
             (int levelID, int entityUUID) = Get<ChangeLevelOnInteract>(target);
             // Set(CreateEntity(), new ChangeLevel(levelID, entityUUID));

@@ -21,6 +21,8 @@ public class DialogSystem : MoonTools.ECS.System
 
     public override void Update(TimeSpan delta)
     {
+        // Console.WriteLine(EntityFilter.Count);
+
         foreach (var entity in EntityFilter.Entities)
         {
             Console.WriteLine("create dialog box");
@@ -45,6 +47,20 @@ public class DialogSystem : MoonTools.ECS.System
                         .ChangeFramerate(-animation.FrameRate)
                         .ForceRawFrame(animation.SpriteAnimationInfo.Frames.Length - 1));
                 Set(entity, new PerformDialogBoxFullyClose());
+                Console.WriteLine($"closeDialogAction {closeDialogAction}");
+                switch(closeDialogAction) {
+                    case CloseDialogAction.StartFakeBattle: {
+                        Console.WriteLine("starting fake battle");
+                        Set(CreateEntity(), new StartFakeBattle());
+                        break;
+                    }
+                    case CloseDialogAction.PlayGameOverSFX: {
+                        EntityPrefabs.PlaySFX(StaticAudio.game_over);
+                        Set(CreateEntity(), new StopAllMusic());
+                        EntityPrefabs.CreateTimedMessage(new PlayMusic(StreamingAudio.dungeon, false), 6f);
+                        break;
+                    }
+                }
                 // Set(entity, new DestroyOnAnimationFinish());
             }
         }

@@ -1,12 +1,7 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Diagnostics.Metrics;
 using System.IO;
-using System.Net.Http.Headers;
-using System.Numerics;
-using System.Runtime.CompilerServices;
+
 using System.Text.Json;
 // using ldtk;
 using ldtk;
@@ -41,6 +36,8 @@ public class LoadLevelJSON : MoonTools.ECS.Manipulator
     }
     public void ReadFile(string filePath)
     {
+        filePath = Path.Combine(AppContext.BaseDirectory, filePath);
+
         if (!System.IO.File.Exists(filePath))
         {
             Console.WriteLine("No such file: " + filePath);
@@ -207,9 +204,17 @@ public class LoadLevelJSON : MoonTools.ECS.Manipulator
                     var entity = CreateEntity();
                     Set(entity, new DestroyOnLoad());
                     Set(entity, new InitialPlayerSpawn(tileX, tileY));
+                    
                     // EntityPrefabs.CreatePlayer(tileX, tileY);
                     break;
                 }
+            case "Player_nontile": {
+                var entity = CreateEntity();
+                Set(entity, new DestroyOnLoad());
+                Set(entity, new InitialPlayerSpawn(tileX, tileY));
+                Set(entity, new SpawnNonTilePlayer());
+                break;
+            }
             // case "Text": {
             //     var entity = EntityPrefabs.CreateText(position.X, position.Y, 12, Fonts.PixeltypeID, GetStringField(entityInstance, "String"));
             //     if(GetBoolField(entityInstance, "Black")) {
@@ -226,6 +231,23 @@ public class LoadLevelJSON : MoonTools.ECS.Manipulator
                 string exitTarget = GetEntityRef(entityInstance, "Location");
                 Set(entity, new ChangeLevelOnInteract(levelIds[levelTarget], TextStorage.GetID(exitTarget)));
                 AddStepTalkInteract(entity, entityInstance);
+                string soundID = GetStringField(entityInstance, "SoundID");
+                switch(soundID) {
+                    case "Pass":{
+                        Console.WriteLine("Pass sound!");
+                        Set(entity, new PlaySFXOnInteract(StaticAudio.Move));
+                        break;
+                    }
+                    case "Door": {
+                        Console.WriteLine("open sound!");
+                        Set(entity, new PlaySFXOnInteract(StaticAudio.Open1));
+                        break;
+                    }
+                    default:{
+                        Console.WriteLine("no id found for: " + soundID);
+                        break;
+                    }
+                }
                 break;
             }
             case "LevelExit": {
@@ -235,12 +257,29 @@ public class LoadLevelJSON : MoonTools.ECS.Manipulator
                 Set(entity, new UUID(TextStorage.GetID(entityInstance.iid)));
                 break;
             }
+            case "PisonVisual": {
+                var pison = CreateEntity();
+                Set(pison, new Position(position.X - 8, position.Y - 24));
+                Set(pison, new SpriteAnimation(SpriteAnimations.pison_map));
+                Set(pison, new Depth(0.5f));
+                Set(pison, new DestroyOnLoad());
+                break;
+            }
             case "Dialog": {
                 Console.WriteLine("creating dialog");
                 var entity = EntityPrefabs.CreateEntityOnTileGrid(tileX, tileY);
                 string dialog = GetStringField(entityInstance, "Dialog");
-                Set(entity, new DisplayDialogOnInteract(TextStorage.GetID(dialog), CloseDialogAction.None));
+                
+                CloseDialogAction action = ConvertStringEnum<CloseDialogAction>.ToEnum(GetStringField(entityInstance, "EventOnFinish"));
+                Console.WriteLine("dialog action " + action);
+                Set(entity, new DisplayDialogOnInteract(TextStorage.GetID(dialog), action));
                 Set(entity, new CanBeTalked());
+                
+                break;
+            }
+            case "DialogOnEnter": {
+                string dialog = GetStringField(entityInstance, "Dialog");
+                EntityPrefabs.CreateTimedMessage(new DisplayDialog(TextStorage.GetID(dialog), CloseDialogAction.None), 0.6f);
                 break;
             }
             case "PlayMusic": {
@@ -251,7 +290,7 @@ public class LoadLevelJSON : MoonTools.ECS.Manipulator
                     "Overworld" => StreamingAudio.overworld1,
                     "Town" => StreamingAudio.fortress_city,
                     "Hell" => StreamingAudio.castle,
-                    _ => StreamingAudio.rm_opening1
+                    _ => StreamingAudio.rm_open01
                 };
                 Set(CreateEntity(), new StopMusicUnless(id));
                 Set(CreateEntity(), new AddAfterTime<PlayMusic>(0.5f, new PlayMusic(id)));

@@ -6,7 +6,7 @@ using System.Xml;
 namespace MyGame.Components;
 
 public enum GameSceneType {
-    StartMenu, Level, EndMenu,
+    Intro, StartMenu, Level, EndMenu, GameOver, DarkWorld, VideoTest
 }
 public enum CharacterType {
     Valsu, Lejes, Lux, Daisy
@@ -23,7 +23,7 @@ public enum BulletPattern {
 }
 public enum ThingType
 {
-    CloudMenuOpen, DennyMenuOpen, StartMenu, DialogAdvanceArrow
+    CloudMenuOpen, DennyMenuOpen, StartMenu, PisonSprite, DaisyBattleSprite
 }
 public enum CloseDialogAction {
     None, PlayGameOverSFX, StartFakeBattle

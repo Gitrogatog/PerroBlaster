@@ -99,6 +99,7 @@ public class World : IDisposable
 
 	public Entity CreateEntity(string tag = "")
 	{
+		// Console.WriteLine("creating entity");
 		var entity = new Entity(EntityIdAssigner.Assign());
 
 		if (entity.ID == EntityComponentIndex.Count)

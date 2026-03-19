@@ -9,7 +9,7 @@ namespace MyGame.Systems;
 public enum InputActions {
     Left, Right, Up, Down,
     Interact, Cancel,
-    Reload, Refresh
+    Reload, Refresh, Fullscreen
 }
 
 public struct InputState
@@ -25,6 +25,7 @@ public struct InputState
 // #endif
     public ButtonState Reload { get; set; }
     public ButtonState Refresh { get; set; }
+    public ButtonState Fullscreen {get; set;}
 }
 public struct LastInputTime {
     public double Left;
@@ -67,14 +68,15 @@ public class Input2 : MoonTools.ECS.System
 
         // if (save.Keyboard == null)
         {
-            Keyboard[InputActions.Up] = CreateKeyboardButtons([KeyCode.Up, KeyCode.W, KeyCode.K, KeyCode.Keypad8]);
-            Keyboard[InputActions.Down] = CreateKeyboardButtons([KeyCode.Down, KeyCode.S, KeyCode.J, KeyCode.Keypad2]);
-            Keyboard[InputActions.Left] = CreateKeyboardButtons([KeyCode.Left, KeyCode.A, KeyCode.H, KeyCode.Keypad4]);
-            Keyboard[InputActions.Right] = CreateKeyboardButtons([KeyCode.Right, KeyCode.D, KeyCode.L, KeyCode.Keypad6]);
+            Keyboard[InputActions.Up] = CreateKeyboardButtons([KeyCode.Up, KeyCode.K, KeyCode.Keypad8]);
+            Keyboard[InputActions.Down] = CreateKeyboardButtons([KeyCode.Down, KeyCode.J, KeyCode.Keypad2]);
+            Keyboard[InputActions.Left] = CreateKeyboardButtons([KeyCode.Left, KeyCode.H, KeyCode.Keypad4]);
+            Keyboard[InputActions.Right] = CreateKeyboardButtons([KeyCode.Right, KeyCode.L, KeyCode.Keypad6]);
             Keyboard[InputActions.Interact] = CreateKeyboardButtons([KeyCode.Z, KeyCode.Y, KeyCode.KeypadEnter, KeyCode.Space]);
             Keyboard[InputActions.Cancel] = CreateKeyboardButtons([KeyCode.Escape, KeyCode.X, KeyCode.C, KeyCode.V, KeyCode.B, KeyCode.N, KeyCode.Keypad0]);
             Keyboard[InputActions.Refresh] = CreateKeyboardButtons([KeyCode.R]);
             Keyboard[InputActions.Reload] = CreateKeyboardButtons([KeyCode.T]);
+            Keyboard[InputActions.Fullscreen] = CreateKeyboardButtons([KeyCode.F4]);
 // #if DEBUG
 //             Keyboard[InputActions.Restart] = Inputs.Keyboard.Button(KeyCode.R);
 // #endif
@@ -200,7 +202,8 @@ public class Input2 : MoonTools.ECS.System
             Interact = CheckButtonState(Keyboard[InputActions.Interact]),
             Cancel = CheckButtonState(Keyboard[InputActions.Cancel]),
             Reload = CheckButtonState(Keyboard[InputActions.Reload]),
-            Refresh = CheckButtonState(Keyboard[InputActions.Refresh])
+            Refresh = CheckButtonState(Keyboard[InputActions.Refresh]),
+            Fullscreen = CheckButtonState(Keyboard[InputActions.Fullscreen])
 //             Launch = CheckButtonState(Keyboard[InputActions.Launch]),
 //             Start = Keyboard[InputActions.Start].State | Gamepad[InputActions.Start].State,
 // #if DEBUG

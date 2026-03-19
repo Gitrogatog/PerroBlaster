@@ -21,16 +21,16 @@ namespace MyGame
 #if DEBUG
             WindowCreateInfo windowCreateInfo = new WindowCreateInfo
             {
-                WindowWidth = Dimensions.GAME_W,
-                WindowHeight = Dimensions.GAME_H,
+                WindowWidth = Dimensions.GAME_W * 2,
+                WindowHeight = Dimensions.GAME_H * 2,
                 WindowTitle = "CookieCutterTemplate",
                 ScreenMode = ScreenMode.Windowed
             };
 #else
 			WindowCreateInfo windowCreateInfo = new WindowCreateInfo
 			{
-				WindowWidth = Dimensions.GAME_W,
-				WindowHeight = Dimensions.GAME_H,
+				WindowWidth = Dimensions.GAME_W * 2,
+				WindowHeight = Dimensions.GAME_H * 2,
 				WindowTitle = "CookieCutterTemplate",
 				ScreenMode = ScreenMode.Windowed
 			};

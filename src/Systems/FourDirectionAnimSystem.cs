@@ -33,12 +33,19 @@ public class FourDirectionAnimSystem : MoonTools.ECS.System
         
         foreach (var entity in DirectionFilter.Entities)
         {
-            (int x, int y) = Get<LastDirection>(entity);
-            if(TryGet<MoveToTile>(entity, out MoveToTile moveToTile)) {
-                x = moveToTile.X - moveToTile.PrevX;
-                y = moveToTile.Y - moveToTile.PrevY;
-                Set(entity, new FacingDirection(x, y));
+            int x, y = 0;
+            if(Has<FacingDirection>(entity)) {
+                (x, y) = Get<FacingDirection>(entity);
             }
+            else{
+                (x, y) = Get<LastDirection>(entity);
+            }
+            // (int x, int y) = Has<FacingDirection>(entity) ? Get<FacingDirection>(entity) : Get<LastDirection>(entity);
+            // if(TryGet<MoveToTile>(entity, out MoveToTile moveToTile)) {
+            //     x = moveToTile.X - moveToTile.PrevX;
+            //     y = moveToTile.Y - moveToTile.PrevY;
+            //     // Set(entity, new FacingDirection(x, y));
+            // }
             
             var animations = Get<FourDirectionAnim>(entity);
 
@@ -82,7 +89,7 @@ public class FourDirectionAnimSystem : MoonTools.ECS.System
             //     }
             // }
 
-            if ((Has<MoveToTile>(entity) || Has<TempTileProgress>(entity)))
+            if (Has<MoveToTile>(entity) || Has<TempTileProgress>(entity) || (Has<Velocity>(entity) && Get<Velocity>(entity).Value != Vector2.Zero))
             {
                 // Console.WriteLine($"moveToTile: {Has<MoveToTile>(entity)} temp: {Has<TempTileProgress>(entity)}");
                 Set(entity, new SetAnimation(

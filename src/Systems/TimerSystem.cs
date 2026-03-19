@@ -27,8 +27,10 @@ public class TimerSystem : MoonTools.ECS.System
             {
                 if (Has<SpawnOnTimerEnd>(entity) && Has<Position>(entity))
                 {
+                    Console.WriteLine("spawning!");
                     ThingType thing = Get<SpawnOnTimerEnd>(entity).Thing;
                     Position pos = Get<Position>(entity);
+                    Console.WriteLine($"timer creating {thing} at {pos}");
                     EntityPrefabs.CreateThing(thing, pos.X, pos.Y);
                 }
                 if (Has<CreateAnimationEntityOnTimerEnd>(entity))

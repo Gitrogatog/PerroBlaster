@@ -11,8 +11,9 @@
 		<RootNamespace>MyGame</RootNamespace>
 		<TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-		<ApplicationIcon />
+		<ApplicationIcon>RPG_RT_48x48_32bit.ico</ApplicationIcon>
 		<NullableReferenceTypes>true</NullableReferenceTypes>
+		<!-- <PublishAot>true</PublishAot> -->
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -29,10 +30,12 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <Content Include="RPG_RT_48x48_32bit.ico" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<ProjectReference Include="lib\MoonWorks\MoonWorks.csproj" />
 		<ProjectReference Include="lib\MoonTools.ECS\MoonTools.ECS.csproj" />
-		<ProjectReference Include="ContentBuilder\ContentBuilderUI\lib\ImGui.NET\ImGui.NET.csproj" />
-		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 	</ItemGroup>
 
 	<!-- The MacOS dynamic loader really sucks! -->

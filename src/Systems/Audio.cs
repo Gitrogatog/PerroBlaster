@@ -150,8 +150,8 @@ public class Audio : MoonTools.ECS.System
             // MusicVoice.Play();
             // var musicVoice = InitMusicVoice(GetSingleton<PlayMusic>().ID);
             // MusicVoice.Stop();
-            var mID = GetSingleton<PlayMusic>().ID;
-            if(CurrentMusicID != mID) {
+            (var mID, bool ignoreIfAlreadyPlaying) = GetSingleton<PlayMusic>();
+            if(CurrentMusicID != mID || !ignoreIfAlreadyPlaying) {
                 CurrentMusicID = mID;
                 MusicData.Disconnect();
                 MusicData = StreamingAudio.Lookup(mID);
@@ -244,8 +244,8 @@ public class Audio : MoonTools.ECS.System
         //     MusicVoices[id]?.SetVolume(volume);
         //     // IDToVoice(id)?.SetVolume(volume);
         // }
-        while(Some<StopAllMusic>()) {
-            Destroy(GetSingletonEntity<StopAllMusic>());
+        if(Some<StopAllMusic>()) {
+            DestroyAll<StopAllMusic>();
             MusicData.Disconnect();
             MusicVoice.Stop();
             // StopAllMusic();

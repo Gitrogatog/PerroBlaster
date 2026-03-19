@@ -1,13 +1,18 @@
+using System;
+using System.IO;
 using System.Numerics;
 using MoonTools.ECS;
 using MoonWorks.Audio;
 using MoonWorks.Graphics;
 using MyGame.Content;
 using MyGame.Data;
+using MyGame.Utility;
 
 namespace MyGame.Components;
 
-public readonly record struct PlayMusic(StreamingSoundID ID);
+public readonly record struct PlayInteractSounds;
+public readonly record struct DoNotPlayInteractSounds;
+public readonly record struct PlayMusic(StreamingSoundID ID, bool IgnoreIfAlreadyPlaying=true);
 public readonly record struct StopMusic(StreamingSoundID ID);
 public readonly record struct StopMusicUnless(StreamingSoundID ID);
 public readonly record struct StopAllMusic();
@@ -31,25 +36,26 @@ public readonly record struct UnprocessedTilePosition();
 public readonly record struct TempTileProgress(float Value);
 public readonly record struct CurrentOption;
 public readonly record struct DisableAllUISelect;
+public readonly record struct PlaySFXOnInteract(StaticSoundID ID);
 public readonly record struct PlaySFXOnSelect(StaticSoundID ID);
 public readonly record struct UIOption;
 public readonly record struct ChangeSceneOnSelect(GameSceneType Scene);
 public readonly record struct SetCharacterTypeOnSelect(CharacterType Value);
 public readonly record struct CloseWindowOnSelect;
 public readonly record struct CloseGameWindow;
+public readonly record struct LoadVideo;
+public readonly record struct PlayVideo;
 public readonly record struct FourDirectionAnim(SpriteAnimationInfoID Up, SpriteAnimationInfoID Down, SpriteAnimationInfoID Left, SpriteAnimationInfoID Right) {
     public FourDirectionAnim(SpriteAnimationInfo Up, SpriteAnimationInfo Down, SpriteAnimationInfo Left, SpriteAnimationInfo Right)
         : this(Up.ID, Down.ID, Left.ID, Right.ID) {}
 }
-public readonly record struct AddOnRoomEnter<T>(T Component) where T : unmanaged;
-public readonly record struct MustBeKilledToProgress;
-public readonly record struct DestroyOnCompleteRoom;
-public readonly record struct CanShoot(BulletPattern Pattern, float Cooldown);
-public readonly record struct FollowPath(int PathID, int TargetPointID);
-public readonly record struct InvertPath;
-public readonly record struct DestroyOnExitRoom;
-public readonly record struct DestroyWhenNoEnemies;
-public readonly record struct RoomID(int X, int Y);
+public readonly record struct StartFakeBattle;
+public readonly record struct IsPison;
+public readonly record struct IsDaisy;
+public readonly record struct SetDaisyColorOverlay(Color Color);
+public readonly record struct PisonPlayAnim(SpriteAnimation anim) {
+    public PisonPlayAnim(SpriteAnimationInfo animationInfo) : this(new SpriteAnimation(animationInfo, loop: false)) {}
+}
 public readonly record struct TouchingMouse();
 public readonly record struct SliceAnim(SpriteAnimationInfoID Value);
 public readonly record struct Clickable(ClickableState Prev, ClickableState Current);
@@ -87,7 +93,7 @@ public readonly record struct SelectHighlight(int XOffset, int YOffset);
 // public readonly record struct ApplyStatus(StatusType Type, int Value);
 // public readonly record struct ApplyHeal(int Amount);
 public readonly record struct ControlledByPlayer();
-public readonly record struct LastPlayerData(SpriteAnimation Animation);
+public readonly record struct LastPlayerData(SpriteAnimation Animation, FacingDirection Direciton);
 public readonly record struct PressedThisFrame();
 public readonly record struct SelectTargetOnClick();
 public readonly record struct DestroyOnMessage<T>() where T : unmanaged;
@@ -180,6 +186,7 @@ public readonly record struct ChangeLevelOnInteract(int LevelID, int EntityUIID)
 public readonly record struct DisplayDialogOnInteract(int DialogID, CloseDialogAction CloseDialogAction);
 public readonly record struct DisplayDialog(int DialogID, CloseDialogAction CloseDialogAction);
 public readonly record struct PlaySFXOnClose();
+public readonly record struct SpawnNonTilePlayer;
 // public readonly record struct ChangeLevelOnTalk(int LevelID, int EntityUIID);
 public readonly record struct InitialPlayerSpawn(int X, int Y);
 public readonly record struct ChangeLevel(int LevelID, int EntityUUID);
@@ -287,6 +294,11 @@ public readonly record struct PerformDialogBoxFullyClose;
 public readonly record struct EnableAdvanceCharCount;
 public readonly record struct IsDialogBox;
 public readonly record struct CanAdvanceDialog;
+public readonly record struct FlickerDontDraw(float Time, float MaxTime) : TimedComponent<FlickerDontDraw>
+{
+    public FlickerDontDraw(float time) : this(time, time) {}
+    public FlickerDontDraw Update(float t) => new FlickerDontDraw(t, MaxTime);
+}
 public readonly record struct CreateDialogTextOnAnimFinish(int TextID);
 public readonly record struct AdvanceCharCount(float NumChars, float CharPerSecond)
 {
@@ -321,6 +333,7 @@ public readonly record struct ClearColor(Color Color);
 
 public readonly record struct Depth(float Value);
 public readonly record struct DrawAsRectangle();
+public readonly record struct AccelerateDir(Vector2 Value);
 public readonly struct NineSlice
 {
     public readonly Sprite TopLeft, TopMid, TopRight, CenterLeft, CenterMid, CenterRight, BottomLeft, BottomMid, BottomRight, Original;
@@ -371,5 +384,17 @@ public readonly record struct SpriteScale(System.Numerics.Vector2 Scale)
 {
     public SpriteScale(float scale) : this(new Vector2(scale, scale)) { }
 }
+// public readonly record struct LerpScale(float Start, float End, float MaxTime, float Progress)
+//     : LerpComponent<LerpScale, SpriteScale>
+// {
+//     public SpriteScale Apply(float value) => new SpriteScale(value);
+//     public LerpScale Update(float t) => new LerpScale(Start, End, MaxTime, t);
+// }
+public readonly record struct LerpValue<T>(float Start, float End, float MaxTime, float Progress) where T : unmanaged
+{
+    public LerpValue (float start, float end, float maxTime) : this(start, end, maxTime, 0) {}
+}
+public readonly record struct GrowSpriteScale(float Start, float End, float MaxTime, float Progress);
+// public readonly record struct (float Start, float End, float MaxTime, float Progress);
 public readonly record struct SpriteOffset(int X, int Y);
 public readonly record struct LastValue(int value);

@@ -33,7 +33,7 @@ public static class EntityPrefabs
     public static Entity CreateEntityOnTileGrid(int x, int y) => manipulator.CreateEntityOnTileGrid(x, y);
     public static Entity CreateTextbox(int textId) => manipulator.CreateTextbox(textId);
     public static Entity CreateDialogText(int textId, int x, int y) {
-        var entity = manipulator.CreateText(10, y - 20, 12, Fonts.RM2000AltID, textId);
+        var entity = manipulator.CreateText(x + 10 - Dimensions.GAME_W / 2, y - 20, 12, Fonts.RM2000AltID, textId);
         World.Set(entity, new DestroyOnDialogBoxClose());
         return entity;
     }
@@ -50,6 +50,13 @@ public static class EntityPrefabs
     }
     public static Entity CreateThing(ThingType thing, int x, int y) => manipulator.CreateThing(thing, x, y);
     public static void CreateStartMenu() => manipulator.CreateStartMenu();
+    public static Entity CreateTextWithDelay(int x, int y, int textID, float delay, float charsPerSecond, Color color) {
+        var entity = manipulator.CreateText(x, y, 12, Fonts.RM2000AltID, textID);
+        World.Remove<AdvanceCharCount>(entity);
+        World.Set(entity, new AddAfterTime<AdvanceCharCount>(delay, new AdvanceCharCount(charsPerSecond)));
+        World.Set(entity, color);
+        return entity;
+    }
     public static Entity CreateText(int x, int y, int size, FontID fontID, string text, HorizontalAlignment horizontalAlignment = HorizontalAlignment.Left) 
         => manipulator.CreateTextEntity(x, y, size, fontID, text, horizontalAlignment);
     public static Entity CreateDestroyOnLoad() {
@@ -83,23 +90,40 @@ public static class EntityPrefabs
         World.Set(entity, new AddAfterTime<T>(time, component));
         return entity;
     }
+    public static Entity CreateVisual(int x, int y, SpriteAnimationInfo animation, float depth = 0.5f) => 
+        CreateVisual(x, y, new SpriteAnimation(animation), depth);
+    public static Entity CreateVisual(int x, int y, SpriteAnimation animation, float depth = 0.5f) {
+        var entity = World.CreateEntity();
+        World.Set(entity, new Position(x, y));
+        World.Set(entity, animation);
+        World.Set(entity, new Depth(depth));
+        World.Set(entity, new DestroyOnLoad());
+        return entity;
+    }
+    public static void ChangeSceneFadeoutDelay(GameSceneType gameScene, float delay, float screenFadeTime) {
+        manipulator.CreateOffsetScreenFade(0, 1, delay, screenFadeTime);
+        CreateTimedMessage(new ChangeGameScene(gameScene), delay + screenFadeTime);
+        // CreatePreventInputEntity();
+    }
     public static void ChangeSceneFadeout(GameSceneType gameScene) {
-        ScreenFadeToBlack(0.5f);
-        CreateTimedMessage(new ChangeGameScene(gameScene), 0.5f);
+        ScreenFadeToBlack(0.1f);
+        CreateTimedMessage(new ChangeGameScene(gameScene), 7f / 6f);
         CreatePreventInputEntity();
         // Console.WriteLine("faindig out!");
         // Console.WriteLine($"levelId:{levelId} entityuuid:{entityUUID}");
     }
     public static void ChangeLevelFadeout(int levelId, int entityUUID) {
-        ScreenFadeToBlack(2f);
-        CreateTimedMessage(new ChangeLevel(levelId, entityUUID), 2f);
+        ScreenFadeToBlack(0.5f);
+        // CreateTimedMessage(new ChangeLevel(levelId, entityUUID), 2f);
+        CreateTimedMessage(new ChangeLevel(levelId, entityUUID), 0.5f + 1f / 6f);
         CreatePreventInputEntity();
         Console.WriteLine("faindig out!");
         Console.WriteLine($"levelId:{levelId} entityuuid:{entityUUID}");
     }
     public static void EnterLevelFadein() {
-        ScreenFadeToClear(2f);
-        World.Set(CreatePreventInputEntity(), new Timer(2f));
+        ScreenStayBlackThenClear(0.1f, 0.5f);
+        // ScreenFadeToClear(0.5f);
+        World.Set(CreatePreventInputEntity(), new Timer(0.6f));
     }
     private static Entity CreatePreventInputEntity() {
         var entity = World.CreateEntity();
@@ -149,12 +173,49 @@ internal class EntityManipulator : Manipulator
                 return entity;
             }
             case ThingType.CloudMenuOpen: {
-                var entity = CreateEntity();
-                Set(entity, new SpriteAnimation(SpriteAnimations.start_menu_init, loop:false));
-                Set(entity, new Position(x, y));
-                // Set(entity, new DestroyOnAnimationFinish());
-                // Set(entity, new SpawnOnAnimationFinish(ThingType.StartMenu));
-                return entity;
+                var menuEntity = CreateEntity();
+                var menuAnim = new SpriteAnimation(SpriteAnimations.start_menu_init, loop:false);
+                Set(menuEntity, new AddAfterTime<SpriteAnimation>(6.5f, menuAnim));
+                Set(menuEntity, new Position(x, y));
+                Set(menuEntity, new Depth(0.8f));
+                Set(menuEntity, new DestroyOnLoad());
+                var background = EntityPrefabs.CreateVisual(Dimensions.GAME_W / 2, Dimensions.GAME_H / 2, SpriteAnimations.Cloud_Title, 0.9f);
+                var text = CreateTextEntity(20, 20, 24, Fonts.huhID, "My Response To The Allegations");
+                Set(text, new Color(0, 0, 0, 255));
+                Set(text, new WordWrap(140));
+                float fallTime = 17f;
+                Vector2 fallSpeed = new Vector2(0, 320);
+                Set(menuEntity, new Velocity());
+                Set(text, new Velocity());
+                Set(background, new Velocity());
+                Set(menuEntity, new AddAfterTime<AccelerateDir>(fallTime, new AccelerateDir(new Vector2(20, 370))));
+                Set(text, new AddAfterTime<AccelerateDir>(fallTime, new AccelerateDir(fallSpeed)));
+                Set(background, new AddAfterTime<AccelerateDir>(fallTime, new AccelerateDir(fallSpeed)));
+                Set(background, new AddAfterTime<RotateSpeed>(fallTime, new RotateSpeed(-0.3f * MathF.PI)));
+                Set(menuEntity, new AddAfterTime<RotateSpeed>(fallTime, new RotateSpeed(2f * MathF.PI)));
+                EntityPrefabs.CreateTimedMessage(new PlayStaticSFX(StaticAudio.crash01), fallTime + 2f);
+                EntityPrefabs.CreateTimedMessage(new ChangeGameScene(GameSceneType.VideoTest), fallTime + 5f);
+                EntityPrefabs.CreateTimedMessage(new StopAllMusic(), fallTime + 2f);
+                EntityPrefabs.CreateTimedMessage(new DoNotPlayInteractSounds(), fallTime);
+                // EntityPrefabs.CreateTimedMessage(new CloseGameWindow(), fallTime + 5f);
+                // Set(CreateEntity(), new LoadVideo());
+                // EntityPrefabs.CreateTimedMessage(new PlayVideo(), 10f);
+
+                // var textEntity = CreateEntity();
+                // Set(textEntity, new Position(x, y));
+                // Set(textEntity, new SpriteAnimation(SpriteAnimations.start_menu_text));
+                // Set(textEntity, new DestroyOnLoad());
+                // Set(textEntity, new Position(x, y));
+                // Set(textEntity, new Depth(0.5f));
+                // var backgroundEntity = CreateEntity();
+                // Set(backgroundEntity, new Position(x, y));
+                // Set(backgroundEntity, new SpriteAnimation(SpriteAnimations.start_menu_background));
+                // Set(backgroundEntity, new DestroyOnLoad());
+                // Set(backgroundEntity, new Depth(0.6f));
+                // Set(backgroundEntity, new ColorBlend(new Color(255, 255, 255, 159)));
+                
+                
+                return menuEntity;
             }
             case ThingType.StartMenu: {
                 var textEntity = CreateEntity();
@@ -205,6 +266,31 @@ internal class EntityManipulator : Manipulator
                 Set(selectHighlight, new Depth(0.55f));
                 return textEntity;
             }
+            case ThingType.PisonSprite: {
+                var entity = CreateEntity();
+                Set(entity, new Position(x + Globals.CameraX, y + Globals.CameraY));
+                Set(entity, new SpriteAnimation(SpriteAnimations.pison_idle));
+                Set(entity, new ColorOverlayTimer(Color.White, 0.25f));
+                Set(entity, new DestroyOnLoad());
+                Set(entity, new IsPison());
+                Set(entity, new Depth(0.05f));
+                // Set(entity, new FollowCameraWithOffset());
+                // Console.WriteLine("creating pison battle sptire");
+                return entity;
+            }
+            case ThingType.DaisyBattleSprite: {
+                var entity = CreateEntity();
+                // Set(entity, new FollowCameraWithOffset());
+                Set(entity, new Position(x + Globals.CameraX, y + Globals.CameraY));
+                Set(entity, SpriteAnimations.daisy_up.Frames[1]);
+                Set(entity, new ColorOverlayTimer(Color.White, 0.15f));
+                Set(entity, new DestroyOnLoad());
+                Set(entity, new SpriteScale(2));
+                Set(entity, new Depth(0.05f));
+                Set(entity, new IsDaisy());
+                // Console.WriteLine("creating daisy battle sprite!");
+                return entity;
+            }
         }
         return default;
     }
@@ -216,12 +302,12 @@ internal class EntityManipulator : Manipulator
         Set(entity, new Rectangle(10, 10, EffectorFlags.CanTouchWall, EffectedFlags.CanTakeDamage));
         
         Set(entity, new FourDirectionAnim(SpriteAnimations.daisy_up, SpriteAnimations.daisy_down, SpriteAnimations.daisy_left, SpriteAnimations.daisy_right));
-        var anim = Some<LastPlayerData>() ? GetSingleton<LastPlayerData>().Animation.SpriteAnimationInfo : SpriteAnimations.daisy_down;
-        EntityUtils.SetStandAnim(World, entity, anim);
+        var lastData = Some<LastPlayerData>() ? GetSingleton<LastPlayerData>() : new LastPlayerData(new SpriteAnimation(SpriteAnimations.daisy_down), new FacingDirection(0, 1));
+        EntityUtils.SetStandAnim(World, entity, lastData.Animation.SpriteAnimationInfo);
         Set(entity, new DestroyOnLoad());
         Set(entity, new MoveSpeed(120));
         Set(entity, new CameraFollow());
-        Set(entity, new FacingDirection(0, 1));
+        Set(entity,lastData.Direciton);
         Set(entity, new Depth(0.4f));
         // Relate(entity, , new Offset());
         return entity;
@@ -239,7 +325,7 @@ internal class EntityManipulator : Manipulator
     }
     public Entity CreateTextbox(int textId) {
         var entity = CreateEntity();
-        Set(entity, new Position(Dimensions.GAME_W / 2, 200));
+        Set(entity, new Position(Dimensions.GAME_W / 2 + Globals.CameraX, 200 + Globals.CameraY));
         // Set(entity, new GrowRectToSize(80, 6, 0));
         // Set(entity, new Rectangle(Dimensions.GAME_W, 12, EffectorFlags.None, EffectedFlags.None));
         // Set(entity, new NineSlice(SpriteAnimations.ui_nine_slice.Frames[0]));
@@ -247,6 +333,7 @@ internal class EntityManipulator : Manipulator
         Set(entity, new SpriteAnimation(SpriteAnimations.dialogbox, loop:false));
         Set(entity, new EnableAdvanceCharCount());
         Set(entity, new CreateDialogTextOnAnimFinish(textId));
+        Set(entity, new Depth(0.02f));
 
         int textX = 8;
         int textY = 16;
@@ -271,7 +358,7 @@ internal class EntityManipulator : Manipulator
         Set(entity, new DisplayCharCount(0));
         Set(entity, new DestroyOnLoad());
         Set(entity, new AdvanceCharCount(120));
-        Set(entity, new WordWrap(300));
+        Set(entity, new WordWrap(270));
         return entity;
     }
     void CreateTextTest()
@@ -320,11 +407,11 @@ internal class EntityManipulator : Manipulator
         Set(title, new Position(Dimensions.GAME_W / 2, Dimensions.GAME_H / 2));
         Set(title, new SpriteAnimation(SpriteAnimations.dennys_start));
         Set(title, new Depth(1f));
-        EntityPrefabs.ScreenStayBlackThenClear(1f, 0.5f);
+        EntityPrefabs.ScreenStayBlackThenClear(0.2f, 0.5f);
         int x = 128 + 64 / 2;
         int y = 148 + 64 / 2;
         var timer1 = CreateEntity();
-        Set(timer1, new Timer(1.5f));
+        Set(timer1, new Timer(0.7f));
         Set(timer1, new SpawnOnTimerEnd(ThingType.DennyMenuOpen));
         Set(timer1, new Position(x, y));
         // var timer2 = CreateEntity();
@@ -373,11 +460,12 @@ internal class EntityManipulator : Manipulator
         var entity = CreateEntity();
         Set(entity, new DestroyOnLoad());
         Set(entity, new Position());
-        Set(entity, new Rectangle(0, 0, Dimensions.GAME_W, Dimensions.GAME_H, EffectorFlags.None, EffectedFlags.None));
+        Set(entity, new Rectangle(800, 600, EffectorFlags.None, EffectedFlags.None));
         Set(entity, new FollowCameraWithOffset(0, 0));
         Set(entity, new DrawAsRectangle());
         Set(entity, new Depth(0.01f));
         Set(entity, new ColorBlend(new Color(0, 0, 0, startAlpha)));
+        // Console.WriteLine($"set color blend: {}")
         return entity;
     }
     public void AddEnemyHitbox(Entity entity, int width, int length, EffectorFlags extraFlags = EffectorFlags.None) {

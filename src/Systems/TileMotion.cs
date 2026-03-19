@@ -25,10 +25,12 @@ public class TileMotion : MoonTools.ECS.System
             if(Has<MoveToTile>(entity)) {
                 continue;
             }
+            Set(entity, new FacingDirection(x, y));
             float moveSpeed = Has<MoveSpeed>(entity) ? Get<MoveSpeed>(entity).Value : MoveConsts.MOVE_SPEED;
             (int prevX, int prevY) = Get<TilePosition>(entity);
             x += prevX;
             y += prevY;
+            
             // if(TryGet<FourDirectionAnim>(entity, out FourDirectionAnim anim)) {
             //     Set(entity)
             // }

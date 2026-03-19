@@ -307,6 +307,35 @@ public class CommandBuffer
 			Cycle = cycle
 		});
 	}
+	public void BlitToCenter(Texture source, Texture destination, Filter filter, bool cycle = false)
+	{
+		uint mult = System.Math.Min(destination.Height / source.Height, destination.Width / source.Width);
+		uint sourceWidthScaled = source.Width * mult;
+		uint sourceHeightScaled = source.Height * mult;
+		uint wRemainder = destination.Width - sourceWidthScaled;
+		uint hRemainer = destination.Height - sourceHeightScaled;
+
+		SDL.SDL_BlitGPUTexture(Handle, new BlitInfo
+		{
+			Source = new BlitRegion
+			{
+				Texture = source.Handle,
+				W = source.Width,
+				H = source.Height
+			},
+			Destination = new BlitRegion
+			{
+				Texture = destination.Handle,
+				X = wRemainder / 2,
+				Y = hRemainer / 2,
+				W = sourceWidthScaled,
+				H = sourceHeightScaled
+			},
+			Filter = filter,
+			LoadOp = LoadOp.DontCare,
+			Cycle = cycle
+		});
+	}
 
 	public ComputePass BeginComputePass(
 		Span<StorageTextureReadWriteBinding> readWriteTextureBindings,

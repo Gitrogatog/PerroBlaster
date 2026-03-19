@@ -18,7 +18,7 @@ public struct SpriteAnimation
     {
         get
         {
-            var integerIndex = (int)(MathF.Sign(RawFrameIndex) * MathF.Ceiling(MathF.Abs((RawFrameIndex))));
+            var integerIndex = (int)(MathF.Sign(RawFrameIndex) * MathF.Floor(MathF.Abs((RawFrameIndex))));
             var framesLength = SpriteAnimationInfo.Frames.Length;
             if (Loop)
             {

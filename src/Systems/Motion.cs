@@ -208,6 +208,10 @@ public class Motion : MoonTools.ECS.System
                 vel = CalcIntendedVelocity(entity, vel, intendedMove, dt);
                 Remove<IntendedMove>(entity);
             }
+            if(Has<AccelerateDir>(entity)) {
+                Vector2 accel = Get<AccelerateDir>(entity).Value;
+                vel += accel * dt;
+            }
 
             if (Has<Rectangle>(entity) && Has<CollidesWithSolids>(entity) && !Has<IgnoreCollision>(entity))
             {

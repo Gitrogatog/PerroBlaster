@@ -2,8 +2,9 @@ using System;
 using MoonTools.ECS;
 using MyGame.Components;
 using MyGame.Utility;
-namespace MyGame.Systems;
+// using static MoonWorks.Graphics.Color;
 
+namespace MyGame.Systems;
 public class LerpAlphaSystem : MoonTools.ECS.System
 {
     private Filter EntityFilter;
@@ -20,8 +21,9 @@ public class LerpAlphaSystem : MoonTools.ECS.System
         foreach (var entity in EntityFilter.Entities)
         {
             (float startAlpha, float endAlpha, float totalTime, float progress) = Get<LerpAlpha>(entity);
+            MoonWorks.Graphics.Color currentColor = Has<ColorBlend>(entity) ? Get<ColorBlend>(entity).Color : MoonWorks.Graphics.Color.Black;
             progress += (float)delta.TotalSeconds / totalTime;
-            Set(entity, new ColorBlend(new MoonWorks.Graphics.Color(0, 0, 0, MathUtils.Lerp(startAlpha, endAlpha, progress))));
+            Set(entity, new ColorBlend(new MoonWorks.Graphics.Color(currentColor.R, currentColor.G, currentColor.B, MathUtils.Lerp(startAlpha, endAlpha, progress))));
             if(progress >= 1) {
                 Remove<LerpAlpha>(entity);
             }

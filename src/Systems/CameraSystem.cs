@@ -25,7 +25,7 @@ public class CameraSystem : MoonTools.ECS.System
         }
         foreach(var entity in FollowCameraFilter.Entities){
             (int x, int y) = Get<FollowCameraWithOffset>(entity);
-            Set(entity, new Position(Globals.CameraX - x, Globals.CameraY - y));
+            Set(entity, new Position(Globals.CameraX + x, Globals.CameraY + y));
         }
     }
 }

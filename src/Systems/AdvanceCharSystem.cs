@@ -29,12 +29,14 @@ public class AdvanceCharCountSystem : MoonTools.ECS.System
                 Set(entity, new DisplayCharCount(newCharInt));
                 // Console.WriteLine("setting display char count!" + Get<DisplayCharCount>(entity));
             }
-            if(TryGet<Text>(entity, out Text text) && TextStorage.GetString(text.TextID).Length <= newCharInt && Has<DestroyOnDialogBoxClose>(entity)) {
+            if(!Some<CanAdvanceDialog>() && TryGet<Text>(entity, out Text text) && TextStorage.GetString(text.TextID).Length <= newCharInt && Has<DestroyOnDialogBoxClose>(entity)) {
                 var flickerArrow = CreateEntity();
                 Set(flickerArrow, new DestroyOnLoad());
                 Set(flickerArrow, new DestroyOnDialogBoxClose());
-                Set(flickerArrow, new Position(Dimensions.GAME_W / 2, Dimensions.GAME_H - 4));
+                Set(flickerArrow, new Position(Dimensions.GAME_W / 2 + Globals.CameraX, Dimensions.GAME_H - 4 + Globals.CameraY));
                 Set(flickerArrow, new SpriteAnimation(SpriteAnimations.ui_arrow_down));
+                Set(flickerArrow, new FlickerDontDraw(1f / 3f));
+                Set(flickerArrow, new Depth(0.00001f));
                 var canAdvanceDialog = CreateEntity();
                 Set(canAdvanceDialog, new CanAdvanceDialog());
                 Set(canAdvanceDialog, new DestroyOnDialogBoxClose());
