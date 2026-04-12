@@ -25,11 +25,45 @@ public static class EntityPrefabs
     }
 
     // public static Entity ChangeLevel(int levelID) => manipulator.CreateLoadSceneMessage(levelID);
-    public static Entity CreatePlayer(int x, int y) => manipulator.CreatePlayer(x, y);
+    public static Entity CreatePlayer(int x, int y) {
+        var entity = CreateEntity();
+        Set(entity, new Position(x, y));
+        Set(entity, new Velocity());
+        // Set(entity, new DrawAsRectangle());
+        Set(entity, new Rectangle(10, 10));
+        Set(entity, new ControlledByPlayer());
+        Set(entity, new CanInteract());
+        Set(entity, new CollidesWithSolids());
+        Set(entity, new Facing());
+        Set(entity, new Gravity(MoveConsts.GRAVITY));
+        float moveSpeed = 50;
+        
+        Set(entity, new MoveSpeed(moveSpeed));
+        Set(entity, EffectedFlags.CanTakeDamage);
+        Set(entity, EffectorFlags.CanTouchWall);
+        Set(entity, new DrawAsRectangle());
+        Set(entity, new Depth(0.0000001f));
+        Set(entity, new ColorBlend(new Color(255, 0, 0)));
+        // Set(entity, new RiseFallAnimation(SpriteAnimations.perro_jump, SpriteAnimations.perro_fall));
+        // Set(entity, CreateWalkSpeedAnim(SpriteAnimations.perro_walk, moveSpeed));
+        // Set(entity, new IdleAnimation(SpriteAnimations.perro_idle));
+        Set(entity, new DestroyOnLoad());
+        return entity;
+    }
+    public static Entity CreateTestHitbox(int x, int y) {
+        var entity = CreateEntity();
+        Set(entity, new Position(x, y));
+        Set(entity, new DrawAsRectangle());
+        Set(entity, new Rectangle(16, 16));
+        Set(entity, new CanInteract());
+        Set(entity, EffectedFlags.None);
+        Set(entity, EffectorFlags.CanDamage);
+        Set(entity, new DestroyOnLoad());
+        return entity;
+    }
     public static Entity CreateTile(int x, int y, Sprite sprite, float depth) => manipulator.CreateTile(x, y, sprite, depth);
     public static Entity CreateAnimatedTile(int x, int y, SpriteAnimationInfo sprite, float depth) => manipulator.CreateAnimatedTile(x, y, new SpriteAnimation(sprite), depth);
-    public static Entity AddSolidCollision(Entity entity, Rectangle rect) => manipulator.AddSolidCollision(entity, rect);
-    public static void AddSolidTileCollision(Entity entity, int x, int y) => manipulator.AddSolidTileCollision(entity, x, y);
+    public static Entity AddSolidCollision(Entity entity, Rectangle rect, EffectedFlags flags) => manipulator.AddSolidCollision(entity, rect, flags);
     public static Entity CreateEntityOnTileGrid(int x, int y) => manipulator.CreateEntityOnTileGrid(x, y);
     public static Entity CreateTextbox(int textId) => manipulator.CreateTextbox(textId);
     public static Entity CreateDialogText(int textId, int x, int y) {
@@ -127,8 +161,8 @@ public static class EntityPrefabs
     }
     private static Entity CreatePreventInputEntity() {
         var entity = World.CreateEntity();
-        World.Set(entity, new PreventInput());
-        World.Set(entity, new DestroyOnLoad());
+        Set(entity, new PreventInput());
+        Set(entity, new DestroyOnLoad());
         return entity;
     }
     public static Entity PlaySFX(StaticSoundID StaticSoundID,
@@ -137,17 +171,74 @@ public static class EntityPrefabs
         float Pitch = 0,
         float Pan = 0)
     {
-        var entity = World.CreateEntity();
-        World.Set(entity, new PlayStaticSFX(StaticSoundID, Category, Volume, Pitch, Pan));
+        var entity = CreateEntity();
+        Set(entity, new PlayStaticSFX(StaticSoundID, Category, Volume, Pitch, Pan));
         return entity;
     }
+    public static WalkSpeedModAnimation CreateWalkSpeedAnim(SpriteAnimationInfo anim, float walkSpeed) =>
+        new WalkSpeedModAnimation(anim.ID, anim.FrameRate / walkSpeed);
     public static bool Mirror<T>(Entity source, Entity target) where T : unmanaged {
-        if(World.Has<T>(source)) {
-            World.Set(target, World.Get<T>(source));
+        if(Has<T>(source)) {
+            Set(target, World.Get<T>(source));
             return true;
         }
         return false;
     }
+
+    static string GetTag(in Entity entity) => World.GetTag(entity);
+	static bool Has<T>(in Entity Entity) where T : unmanaged => World.Has<T>(Entity);
+	static bool Some<T>() where T : unmanaged => World.Some<T>();
+	static ref T Get<T>(in Entity Entity) where T : unmanaged => ref World.Get<T>(Entity);
+	static bool TryGet<T>(in Entity Entity, out T component) where T : unmanaged
+	{
+		if (Has<T>(Entity))
+		{
+			component = Get<T>(Entity);
+			return true;
+		}
+		component = default;
+		return false;
+	}
+	static ref T GetSingleton<T>() where T : unmanaged => ref World.GetSingleton<T>();
+	static Entity GetSingletonEntity<T>() where T : unmanaged => World.GetSingletonEntity<T>();
+
+	static ReverseSpanEnumerator<(Entity, Entity)> Relations<T>() where T : unmanaged => World.Relations<T>();
+	static bool Related<T>(in Entity entityA, in Entity entityB) where T : unmanaged => World.Related<T>(entityA, entityB);
+	static T GetRelationData<T>(in Entity entityA, in Entity entityB) where T : unmanaged => World.GetRelationData<T>(entityA, entityB);
+
+	static ReverseSpanEnumerator<Entity> OutRelations<T>(in Entity entity) where T : unmanaged => World.OutRelations<T>(entity);
+	static Entity OutRelationSingleton<T>(in Entity entity) where T : unmanaged => World.OutRelationSingleton<T>(entity);
+	static bool HasOutRelation<T>(in Entity entity) where T : unmanaged => World.HasOutRelation<T>(entity);
+	static int OutRelationCount<T>(in Entity entity) where T : unmanaged => World.OutRelationCount<T>(entity);
+	static Entity NthOutRelation<T>(in Entity entity, int n) where T : unmanaged => World.NthOutRelation<T>(entity, n);
+
+	static ReverseSpanEnumerator<Entity> InRelations<T>(in Entity entity) where T : unmanaged => World.InRelations<T>(entity);
+	static Entity InRelationSingleton<T>(in Entity entity) where T : unmanaged => World.InRelationSingleton<T>(entity);
+	static bool HasInRelation<T>(in Entity entity) where T : unmanaged => World.HasInRelation<T>(entity);
+	static int InRelationCount<T>(in Entity entity) where T : unmanaged => World.InRelationCount<T>(entity);
+	static Entity NthInRelation<T>(in Entity entity, int n) where T : unmanaged => World.NthInRelation<T>(entity, n);
+
+    static Entity CreateEntity(string tag = "") => World.CreateEntity(tag);
+	static void Tag(Entity entity, string tag) => World.Tag(entity, tag);
+	static void Set<TComponent>(in Entity entity, in TComponent component) where TComponent : unmanaged => World.Set<TComponent>(entity, component);
+	static void Set<TComponent>(in Entity entity) where TComponent : unmanaged => World.Set<TComponent>(entity, new TComponent());
+
+	static void Remove<TComponent>(in Entity entity) where TComponent : unmanaged => World.Remove<TComponent>(entity);
+	static void DestroyAll<TComponent>() where TComponent : unmanaged {
+		while(Some<TComponent>()) {
+			Destroy(GetSingletonEntity<TComponent>());
+		}
+	}
+	static void RemoveAll<TComponent>() where TComponent : unmanaged {
+		while(Some<TComponent>()) {
+			Remove<TComponent>(GetSingletonEntity<TComponent>());
+		}
+	}
+
+	static void Relate<TRelationKind>(in Entity entityA, in Entity entityB, TRelationKind relationData) where TRelationKind : unmanaged => World.Relate(entityA, entityB, relationData);
+	static void Unrelate<TRelationKind>(in Entity entityA, in Entity entityB) where TRelationKind : unmanaged => World.Unrelate<TRelationKind>(entityA, entityB);
+	static void UnrelateAll<TRelationKind>(in Entity entity) where TRelationKind : unmanaged => World.UnrelateAll<TRelationKind>(entity);
+	static void Destroy(in Entity entity) => World.Destroy(entity);
 }
 
 internal class EntityManipulator : Manipulator
@@ -165,68 +256,22 @@ internal class EntityManipulator : Manipulator
         switch(thing) {
             case ThingType.DennyMenuOpen: {
                 var entity = CreateEntity();
-                Set(entity, new SpriteAnimation(SpriteAnimations.dennys_menu_init, loop:false));
                 Set(entity, new Position(x, y));
                 Set(entity, new DestroyOnAnimationFinish());
                 Set(entity, new SpawnOnAnimationFinish(ThingType.StartMenu));
                 Set(entity, new Depth(0.8f));
                 return entity;
             }
-            case ThingType.CloudMenuOpen: {
-                var menuEntity = CreateEntity();
-                var menuAnim = new SpriteAnimation(SpriteAnimations.start_menu_init, loop:false);
-                Set(menuEntity, new AddAfterTime<SpriteAnimation>(6.5f, menuAnim));
-                Set(menuEntity, new Position(x, y));
-                Set(menuEntity, new Depth(0.8f));
-                Set(menuEntity, new DestroyOnLoad());
-                var background = EntityPrefabs.CreateVisual(Dimensions.GAME_W / 2, Dimensions.GAME_H / 2, SpriteAnimations.Cloud_Title, 0.9f);
-                var text = CreateTextEntity(20, 20, 24, Fonts.huhID, "My Response To The Allegations");
-                Set(text, new Color(0, 0, 0, 255));
-                Set(text, new WordWrap(140));
-                float fallTime = 17f;
-                Vector2 fallSpeed = new Vector2(0, 320);
-                Set(menuEntity, new Velocity());
-                Set(text, new Velocity());
-                Set(background, new Velocity());
-                Set(menuEntity, new AddAfterTime<AccelerateDir>(fallTime, new AccelerateDir(new Vector2(20, 370))));
-                Set(text, new AddAfterTime<AccelerateDir>(fallTime, new AccelerateDir(fallSpeed)));
-                Set(background, new AddAfterTime<AccelerateDir>(fallTime, new AccelerateDir(fallSpeed)));
-                Set(background, new AddAfterTime<RotateSpeed>(fallTime, new RotateSpeed(-0.3f * MathF.PI)));
-                Set(menuEntity, new AddAfterTime<RotateSpeed>(fallTime, new RotateSpeed(2f * MathF.PI)));
-                EntityPrefabs.CreateTimedMessage(new PlayStaticSFX(StaticAudio.crash01), fallTime + 2f);
-                EntityPrefabs.CreateTimedMessage(new ChangeGameScene(GameSceneType.VideoTest), fallTime + 5f);
-                EntityPrefabs.CreateTimedMessage(new StopAllMusic(), fallTime + 2f);
-                EntityPrefabs.CreateTimedMessage(new DoNotPlayInteractSounds(), fallTime);
-                // EntityPrefabs.CreateTimedMessage(new CloseGameWindow(), fallTime + 5f);
-                // Set(CreateEntity(), new LoadVideo());
-                // EntityPrefabs.CreateTimedMessage(new PlayVideo(), 10f);
-
-                // var textEntity = CreateEntity();
-                // Set(textEntity, new Position(x, y));
-                // Set(textEntity, new SpriteAnimation(SpriteAnimations.start_menu_text));
-                // Set(textEntity, new DestroyOnLoad());
-                // Set(textEntity, new Position(x, y));
-                // Set(textEntity, new Depth(0.5f));
-                // var backgroundEntity = CreateEntity();
-                // Set(backgroundEntity, new Position(x, y));
-                // Set(backgroundEntity, new SpriteAnimation(SpriteAnimations.start_menu_background));
-                // Set(backgroundEntity, new DestroyOnLoad());
-                // Set(backgroundEntity, new Depth(0.6f));
-                // Set(backgroundEntity, new ColorBlend(new Color(255, 255, 255, 159)));
-                
-                
-                return menuEntity;
-            }
             case ThingType.StartMenu: {
                 var textEntity = CreateEntity();
                 Set(textEntity, new Position(x, y));
-                Set(textEntity, new SpriteAnimation(SpriteAnimations.start_menu_text));
+                // Set(textEntity, new SpriteAnimation(SpriteAnimations.start_menu_text));
                 Set(textEntity, new DestroyOnLoad());
                 Set(textEntity, new Position(x, y));
                 Set(textEntity, new Depth(0.5f));
                 var backgroundEntity = CreateEntity();
                 Set(backgroundEntity, new Position(x, y));
-                Set(backgroundEntity, new SpriteAnimation(SpriteAnimations.start_menu_background));
+                // Set(backgroundEntity, new SpriteAnimation(SpriteAnimations.start_menu_background));
                 Set(backgroundEntity, new DestroyOnLoad());
                 Set(backgroundEntity, new Depth(0.6f));
                 Set(backgroundEntity, new ColorBlend(new Color(255, 255, 255, 159)));
@@ -259,7 +304,7 @@ internal class EntityManipulator : Manipulator
                 int selectX = 0;
                 int selectY = 0;
                 var selectHighlight = CreateEntity();
-                Set(selectHighlight, new SpriteAnimation(SpriteAnimations.ui_blink2));
+                // Set(selectHighlight, new SpriteAnimation(SpriteAnimations.ui_blink2));
                 Set(selectHighlight, new Position(x + xOffset + selectX, y + yOffsetInit + selectY));
                 Set(selectHighlight, new DestroyOnLoad());
                 Set(selectHighlight, new SelectHighlight(selectX, selectY));
@@ -269,7 +314,7 @@ internal class EntityManipulator : Manipulator
             case ThingType.PisonSprite: {
                 var entity = CreateEntity();
                 Set(entity, new Position(x + Globals.CameraX, y + Globals.CameraY));
-                Set(entity, new SpriteAnimation(SpriteAnimations.pison_idle));
+                // Set(entity, new SpriteAnimation(SpriteAnimations.pison_idle));
                 Set(entity, new ColorOverlayTimer(Color.White, 0.25f));
                 Set(entity, new DestroyOnLoad());
                 Set(entity, new IsPison());
@@ -299,7 +344,10 @@ internal class EntityManipulator : Manipulator
     {
         Entity entity = CreateEntityOnTileGrid(x, y);
         Set(entity, new ControlledByPlayer());
-        Set(entity, new Rectangle(10, 10, EffectorFlags.CanTouchWall, EffectedFlags.CanTakeDamage));
+        Set(entity, new Rectangle(10, 10));
+        Set(entity, EffectorFlags.CanTouchPit);
+        Set(entity, EffectedFlags.CanTakeDamage);
+        // , EffectorFlags.CanTouchWall, EffectedFlags.CanTakeDamage
         
         Set(entity, new FourDirectionAnim(SpriteAnimations.daisy_up, SpriteAnimations.daisy_down, SpriteAnimations.daisy_left, SpriteAnimations.daisy_right));
         var lastData = Some<LastPlayerData>() ? GetSingleton<LastPlayerData>() : new LastPlayerData(new SpriteAnimation(SpriteAnimations.daisy_down), new FacingDirection(0, 1));
@@ -330,7 +378,7 @@ internal class EntityManipulator : Manipulator
         // Set(entity, new Rectangle(Dimensions.GAME_W, 12, EffectorFlags.None, EffectedFlags.None));
         // Set(entity, new NineSlice(SpriteAnimations.ui_nine_slice.Frames[0]));
         Set(entity, new IsDialogBox());
-        Set(entity, new SpriteAnimation(SpriteAnimations.dialogbox, loop:false));
+        // Set(entity, new SpriteAnimation(SpriteAnimations.dialogbox, loop:false));
         Set(entity, new EnableAdvanceCharCount());
         Set(entity, new CreateDialogTextOnAnimFinish(textId));
         Set(entity, new Depth(0.02f));
@@ -373,7 +421,7 @@ internal class EntityManipulator : Manipulator
     }
     public Entity CreateTile(int x, int y, Sprite tileSprite, float depth)
     {
-        var entity = CreateEntity();
+        var entity = CreateEntity("TILE");
         Set(entity, new Position(x, y));
         Set(entity, tileSprite);
         Set(entity, new DestroyOnLoad());
@@ -388,24 +436,22 @@ internal class EntityManipulator : Manipulator
         Set(entity, new Depth(depth));
         return entity;
     }
-    public void AddSolidTileCollision(Entity entity, int x, int y) {
-        Set(entity, new Solid());
-        AddEntityToTile(entity, x, y);
-    }
-    public Entity AddSolidCollision(Entity entity, Rectangle rect)
+    public Entity AddSolidCollision(Entity entity, Rectangle rect, EffectedFlags flags)
     {
         Set(entity, new Solid());
-        Set(entity, new CanInteract());
+        Set(entity, new DrawAsRectangle());
+        // Set(entity, new CanInteract());
         Set(entity, rect);
+        Set(entity, flags);
         return entity;
     }
-    public void CreateStartMenu(){
+    public void CreateStartMenu() {
         // CreateTextEntity(60, 20, 8, Fonts.KosugiID, "BUBBA");
         // var subTitle = CreateTextEntity(70, 65, 12, Fonts.PixeltypeID, "AXE");
         var title = CreateEntity();
         Set(title, new DestroyOnLoad());
         Set(title, new Position(Dimensions.GAME_W / 2, Dimensions.GAME_H / 2));
-        Set(title, new SpriteAnimation(SpriteAnimations.dennys_start));
+        // Set(title, new SpriteAnimation(SpriteAnimations.dennys_start));
         Set(title, new Depth(1f));
         EntityPrefabs.ScreenStayBlackThenClear(0.2f, 0.5f);
         int x = 128 + 64 / 2;
@@ -460,7 +506,7 @@ internal class EntityManipulator : Manipulator
         var entity = CreateEntity();
         Set(entity, new DestroyOnLoad());
         Set(entity, new Position());
-        Set(entity, new Rectangle(800, 600, EffectorFlags.None, EffectedFlags.None));
+        Set(entity, new Rectangle(800, 600));
         Set(entity, new FollowCameraWithOffset(0, 0));
         Set(entity, new DrawAsRectangle());
         Set(entity, new Depth(0.01f));
@@ -469,7 +515,7 @@ internal class EntityManipulator : Manipulator
         return entity;
     }
     public void AddEnemyHitbox(Entity entity, int width, int length, EffectorFlags extraFlags = EffectorFlags.None) {
-        Set(entity, new Rectangle(width, length, EffectorFlags.CanTouchWall | extraFlags, EffectedFlags.CanTakeDamage));
+        Set(entity, new Rectangle(width, length));
     }
     // public Entity CreateLoadSceneMessage(int levelID)
     // {
@@ -478,106 +524,7 @@ internal class EntityManipulator : Manipulator
     //     Set(entity, new ChangeLevel(levelID));
     //     return entity;
     // }
-    public Entity CreateTimedMessage<T>(T component, float time) where T : unmanaged
-    {
-        var entity = CreateEntity();
-        Set(entity, new AddAfterTime<T>(time, component));
-        return entity;
-    }
-    public Entity CreateSpriteText(string input, SpriteAnimationInfo info, int textSizeX, int textSizeY, int separationX, int separationY, int worldX, int worldY, int scale, bool centeredX, bool centeredY, bool dontDraw = false)
-    {
-        Sprite sprite = info.Frames[0];
-        var parent = CreateEntity();
-        Set(parent, new DestroyOnLoad());
-        Set(parent, new TextSpriteParent());
-
-        if (dontDraw)
-        {
-            // Set(parent, new AdvanceCharSpeed(0.06f));
-            Set(parent, new AdvanceCharCount(1f, 1f));
-        }
-        int x = 0, y = 0, maxLength = 0;
-        int deltaX = separationX + textSizeX * scale;
-        int deltaY = separationY + textSizeY * scale;
-        for (int i = 0; i < input.Length; i++)
-        {
-            char c = input[i];
-            if (c == '\n')
-            {
-                x += deltaX;
-                var blank = CreateEntity();
-                Set(blank, new DestroyOnLoad());
-                Set(blank, new Position(worldX + x, worldY + y));
-                Relate(parent, blank, new Child());
-                Relate(parent, blank, new DontDraw());
-
-                maxLength = Math.Max(x, maxLength);
-                y += deltaY;
-                x = 0;
-                continue;
-            }
-            if (c == ' ')
-            {
-                x += deltaX;
-                var blank = CreateEntity();
-                Set(blank, new DestroyOnLoad());
-                Set(blank, new Position(worldX + x, worldY + y));
-                Relate(parent, blank, new Child());
-                Relate(parent, blank, new DontDraw());
-                continue;
-            }
-            int offset = TextUtils.CharToSF2TextPos(c);
-            if (offset < 0)
-            {
-                continue;
-            }
-            Sprite textSprite = sprite.Slice(offset * textSizeX, 0, textSizeX, textSizeY);
-            Position pos = new Position(worldX + x, worldY + y);
-            var textEntity = CreateEntity();
-            Set(textEntity, textSprite);
-            Set(textEntity, pos);
-            Set(textEntity, new DestroyOnLoad());
-            Set(textEntity, new Depth(0.01f));
-            Relate(parent, textEntity, new Child());
-            if (dontDraw)
-            {
-                Relate(parent, textEntity, new DontDraw());
-            }
-            if (scale != 1)
-            {
-                Set(textEntity, new SpriteScale(scale));
-            }
-            x += deltaX;
-        }
-        if (centeredX || centeredY)
-        {
-            if (centeredX)
-            {
-                x -= deltaX;
-                maxLength = Math.Max(x, maxLength) / 2;
-            }
-            if (centeredY)
-            {
-                y /= 2;
-            }
-            foreach (var child in OutRelations<Child>(parent))
-            {
-                var pos = Get<Position>(child);
-                if (centeredX)
-                {
-                    pos = pos.SetX(pos.X - maxLength);
-                }
-                if (centeredY)
-                {
-                    pos = pos.SetY(pos.Y - y);
-                }
-                Set(child, pos);
-            }
-        }
-        return parent;
-
-    }
-
+    
     public EntityManipulator(World world) : base(world)
     {
     }

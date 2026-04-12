@@ -112,10 +112,10 @@ public class LoadLevelJSON : MoonTools.ECS.Manipulator
         
         // read through 
         Sprite tileGridSprite = SpriteAnimations.Tiles.Frames[0];
-        ReadVisualTiles(level, tileGridSprite, "Tiles16", 16, 0.9f);
-        ReadVisualTiles(level, tileGridSprite, "MiniTiles", 8, 0.8f);
-        ReadVisualTiles(level, tileGridSprite, "TopButBelowPlayerTiles", 16, 0.7f);
-        ReadVisualTiles(level, tileGridSprite, "TopTiles", 16, 0.2f);
+        ReadVisualTiles(level, tileGridSprite, "GroundTiles", 8, 0.9f);
+        // ReadVisualTiles(level, tileGridSprite, "MiniTiles", 8, 0.8f);
+        // ReadVisualTiles(level, tileGridSprite, "TopButBelowPlayerTiles", 16, 0.7f);
+        // ReadVisualTiles(level, tileGridSprite, "TopTiles", 16, 0.2f);
         
         Layerinstance layerInstance = GetLayerInstanceByName(level, "Entities");
         if(layerInstance.__type == "Entities") {
@@ -150,8 +150,9 @@ public class LoadLevelJSON : MoonTools.ECS.Manipulator
                 entity = EntityPrefabs.CreateTile(levelX + localTileSize / 2, levelY + localTileSize / 2, tileSprite, depth);
             }
             if(hasCollision) {
-                EntityPrefabs.AddSolidCollision(entity, new Rectangle(16, 16, EffectorFlags.None, EffectedFlags.IsWall));
-                EntityPrefabs.AddSolidTileCollision(entity, levelX / 16, levelY / 16);
+                EntityPrefabs.AddSolidCollision(entity, new Rectangle(8, 8), EffectedFlags.IsWall);
+                Set(entity, new DrawAsRectangle());
+                // EntityPrefabs.AddSolidTileCollision(entity, levelX / 16, levelY / 16);
             }
         }
     }
@@ -190,7 +191,7 @@ public class LoadLevelJSON : MoonTools.ECS.Manipulator
     // }
     void ReadEntity(Entityinstance entityInstance)
     {
-        Vector2I position = new Vector2I(LevelToWorld(entityInstance.px[0]), LevelToWorld(entityInstance.px[1])); //+ tileSize / 2;
+        (int posX, int posY) = (LevelToWorld(entityInstance.px[0]), LevelToWorld(entityInstance.px[1])); //+ tileSize / 2;
         int tileX = entityInstance.__grid[0];
         int tileY = entityInstance.__grid[1];
         // Console.WriteLine($"read entity at {position}");
@@ -201,18 +202,28 @@ public class LoadLevelJSON : MoonTools.ECS.Manipulator
 
             case "Player":
                 {
-                    var entity = CreateEntity();
-                    Set(entity, new DestroyOnLoad());
-                    Set(entity, new InitialPlayerSpawn(tileX, tileY));
+                    // var entity = CreateEntity();
+                    // Set(entity, new DestroyOnLoad());
+                    // Set(entity, new InitialPlayerSpawn(tileX, tileY));
                     
                     // EntityPrefabs.CreatePlayer(tileX, tileY);
+                    Console.WriteLine("creating player!");
+                    EntityPrefabs.CreatePlayer(posX, posY);
                     break;
                 }
-            case "Player_nontile": {
-                var entity = CreateEntity();
+            case "TestHitbox": {
+                EntityPrefabs.CreateTestHitbox(posX, posY);
+                break;
+            }
+            case "Solid": {
+                var entity = CreateEntity("SOLID");
+                Set(entity, new Position(posX, posY));
+                Set(entity, new Velocity(GetFloatField(entityInstance, "XVelocity"), GetFloatField(entityInstance, "YVelocity")));
+                Set(entity, new Rectangle(16, 16));
+                Set(entity, new Solid());
+                Set(entity, EffectedFlags.IsWall);
                 Set(entity, new DestroyOnLoad());
-                Set(entity, new InitialPlayerSpawn(tileX, tileY));
-                Set(entity, new SpawnNonTilePlayer());
+                Set(entity, new DrawAsRectangle());
                 break;
             }
             // case "Text": {
@@ -255,14 +266,6 @@ public class LoadLevelJSON : MoonTools.ECS.Manipulator
                 // Set(entity, new DestroyOnLoad());
                 // Set(entity, new TilePosition(tileX, tileY));
                 Set(entity, new UUID(TextStorage.GetID(entityInstance.iid)));
-                break;
-            }
-            case "PisonVisual": {
-                var pison = CreateEntity();
-                Set(pison, new Position(position.X - 8, position.Y - 24));
-                Set(pison, new SpriteAnimation(SpriteAnimations.pison_map));
-                Set(pison, new Depth(0.5f));
-                Set(pison, new DestroyOnLoad());
                 break;
             }
             case "Dialog": {

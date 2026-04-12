@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using MoonTools.ECS;
 using MyGame;
@@ -40,6 +41,9 @@ public class SpatialHashWithFlags
         CellSize = cellSize;
 
         Collisions = new List<Collision>[GlobalCollision.effectorFlags.Length];
+        for(int i = 0; i < Collisions.Length; i++) {
+            Collisions[i] = new List<Collision>();
+        }
         Cells = new List<Entry>[RowCount][];
         for (var i = 0; i < RowCount; i += 1)
         {
@@ -65,7 +69,7 @@ public class SpatialHashWithFlags
     /// Rectangles outside of the hash range will be ignored!
     /// </summary>
     /// <param name="id">A unique ID for the shape-transform pair.</param>
-    public virtual void Insert(Entity parentId, Rectangle rectangle, EffectorFlags effectorFlags, EffectedFlags effectedFlags)
+    public virtual void InsertAndCollide(Entity parentId, Rectangle rectangle, EffectorFlags effectorFlags, EffectedFlags effectedFlags)
     {
         var relativeX = rectangle.X - X;
         var relativeY = rectangle.Y - Y;
@@ -98,6 +102,26 @@ public class SpatialHashWithFlags
 
         IDBoxLookup[parentId] = new Entry(parentId, rectangle, effectorFlags, effectedFlags);
     }
+    public virtual void InsertNoCollide(Entity parentId, Rectangle rectangle, EffectorFlags effectorFlags, EffectedFlags effectedFlags)
+    {
+        var relativeX = rectangle.X - X;
+        var relativeY = rectangle.Y - Y;
+        var rowRangeStart = Math.Clamp(relativeX / CellSize, 0, RowCount - 1);
+        var rowRangeEnd = Math.Clamp((relativeX + rectangle.Width) / CellSize, 0, RowCount - 1);
+        var columnRangeStart = Math.Clamp(relativeY / CellSize, 0, ColumnCount - 1);
+        var columnRangeEnd = Math.Clamp((relativeY + rectangle.Height) / CellSize, 0, ColumnCount - 1);
+
+        for (var i = rowRangeStart; i <= rowRangeEnd; i += 1)
+        {
+            for (var j = columnRangeStart; j <= columnRangeEnd; j += 1)
+            {
+                Cells[i][j].Add(new Entry(parentId, rectangle, effectorFlags, effectedFlags));
+            }
+        }
+
+        IDBoxLookup[parentId] = new Entry(parentId, rectangle, effectorFlags, effectedFlags);
+    }
+
 
     private void AddCollision(Entity effector, Entity effected, EffectorFlags aFlags, EffectedFlags bFlags)
     {
@@ -116,6 +140,24 @@ public class SpatialHashWithFlags
         }
 
         Pairs.Add(collision);
+    }
+    public void PrintCellsAndId() {
+        for (var i = 0; i < RowCount; i += 1)
+        {
+            for (var j = 0; j < ColumnCount; j += 1)
+            {
+                var cellList = Cells[i][j];
+                if(cellList.Count > 0) {
+                    Console.WriteLine($"{i},{j}: {string.Join(", ", cellList)}");
+                }
+            }
+        }
+        Console.WriteLine("id box keys");
+        foreach(var key in IDBoxLookup.Keys) {
+            Console.WriteLine($"{key}: {IDBoxLookup[key]}");
+        }
+
+        IDBoxLookup.Clear();
     }
 
     /// <summary>
@@ -155,6 +197,32 @@ public class SpatialHashWithFlags
             this,
             Keys(rowRangeStart, columnRangeStart, rowRangeEnd, columnRangeEnd)
         );
+    }
+
+    public void RemoveEntry(Entity parentId, Rectangle rectangle)
+    {
+        var relativeX = rectangle.X - X;
+        var relativeY = rectangle.Y - Y;
+        var rowRangeStart = Math.Clamp(relativeX / CellSize, 0, RowCount - 1);
+        var rowRangeEnd = Math.Clamp((relativeX + rectangle.Width) / CellSize, 0, RowCount - 1);
+        var columnRangeStart = Math.Clamp(relativeY / CellSize, 0, ColumnCount - 1);
+        var columnRangeEnd = Math.Clamp((relativeY + rectangle.Height) / CellSize, 0, ColumnCount - 1);
+
+        for (var i = rowRangeStart; i <= rowRangeEnd; i += 1)
+        {
+            for (var j = columnRangeStart; j <= columnRangeEnd; j += 1)
+            {
+                var cellList = Cells[i][j];
+                for(int index = 0; index < cellList.Count; index++) {
+                    if(cellList[index].Entity == parentId) {
+                        cellList[index] = cellList[^1];
+                        cellList.RemoveAt(cellList.Count - 1);
+                    }
+                }
+            }
+        }
+
+        IDBoxLookup.Remove(parentId);
     }
 
     /// <summary>

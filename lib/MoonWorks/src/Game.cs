@@ -278,7 +278,7 @@ namespace MoonWorks
 
 				if (updateCount > 1)
 				{
-					Logger.LogInfo($"Missed a frame, updated {updateCount} times");
+					// Logger.LogInfo($"Missed a frame, updated {updateCount} times");
 				}
 
 				// Timestep alpha should be 0 if we are in latency-optimized mode.

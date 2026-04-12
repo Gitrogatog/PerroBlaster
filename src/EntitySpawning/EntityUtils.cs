@@ -24,4 +24,5 @@ public static class EntityUtils
             ForceUpdate: true
         ));
     }
+    // public static T CreateAnimSpeedMult(SpriteAnimationInfo anim, float speed) where T : unmanaged, 
 }

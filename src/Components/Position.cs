@@ -55,7 +55,8 @@ public readonly record struct Position
 
     public override string ToString()
     {
-        return $"({X}, {Y})";
+        return $"Raw: {RawPosition.X},{RawPosition.Y} int: {X},{Y})";
+        // return $"({X}, {Y})";
     }
 
 }

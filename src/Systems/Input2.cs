@@ -68,10 +68,10 @@ public class Input2 : MoonTools.ECS.System
 
         // if (save.Keyboard == null)
         {
-            Keyboard[InputActions.Up] = CreateKeyboardButtons([KeyCode.Up, KeyCode.K, KeyCode.Keypad8]);
-            Keyboard[InputActions.Down] = CreateKeyboardButtons([KeyCode.Down, KeyCode.J, KeyCode.Keypad2]);
-            Keyboard[InputActions.Left] = CreateKeyboardButtons([KeyCode.Left, KeyCode.H, KeyCode.Keypad4]);
-            Keyboard[InputActions.Right] = CreateKeyboardButtons([KeyCode.Right, KeyCode.L, KeyCode.Keypad6]);
+            Keyboard[InputActions.Up] = CreateKeyboardButtons([KeyCode.Up, KeyCode.W, KeyCode.Keypad8]);
+            Keyboard[InputActions.Down] = CreateKeyboardButtons([KeyCode.Down, KeyCode.S, KeyCode.Keypad2]);
+            Keyboard[InputActions.Left] = CreateKeyboardButtons([KeyCode.Left, KeyCode.A, KeyCode.Keypad4]);
+            Keyboard[InputActions.Right] = CreateKeyboardButtons([KeyCode.Right, KeyCode.D, KeyCode.Keypad6]);
             Keyboard[InputActions.Interact] = CreateKeyboardButtons([KeyCode.Z, KeyCode.Y, KeyCode.KeypadEnter, KeyCode.Space]);
             Keyboard[InputActions.Cancel] = CreateKeyboardButtons([KeyCode.Escape, KeyCode.X, KeyCode.C, KeyCode.V, KeyCode.B, KeyCode.N, KeyCode.Keypad0]);
             Keyboard[InputActions.Refresh] = CreateKeyboardButtons([KeyCode.R]);

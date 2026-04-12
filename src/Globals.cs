@@ -24,8 +24,12 @@ public static class GlobalInput
 public static class GlobalCollision {
     public static EffectorFlags[] effectorFlags = Enum.GetValues<EffectorFlags>();
     public static EffectedFlags[] effectedFlags = Enum.GetValues<EffectedFlags>();
+    public static Dictionary<EffectorFlags, int> flagToID = new Dictionary<EffectorFlags, int>();
     public static List<(Entity, Entity)>[] Collisions = new List<(Entity, Entity)>[effectorFlags.Length];
     public static void Init() {
+        for(int i = 0; i < effectorFlags.Length; i++) {
+            flagToID[effectorFlags[i]] = i;
+        }
         for(int i = 0; i < Collisions.Length; i++){
             Collisions[i] = new List<(Entity, Entity)>();
         }

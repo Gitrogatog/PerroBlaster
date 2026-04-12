@@ -17,7 +17,6 @@ public class VideoSystem : MoonTools.ECS.System
     // private static string videoPath = AppContext.BaseDirectory.Replace('\\', '/') + "ContentStatic/Video/out.obu";
     // private static string videoPath = Path.Combine(AppContext.BaseDirectory, "ContentStatic","Video", "out.obu");
     private static string videoPath = "ContentStatic/Video/out.obu";
-    // "C:\Users\rober\Documents\Moonworks\projects\CookieJam\bin\Debug\net9.0\ContentStatic\Video\nostalgiacritic_short01.obu"
     bool playVideo = false;
     bool videoEnded = false;
     public VideoSystem(World world, Game game) : base(world)

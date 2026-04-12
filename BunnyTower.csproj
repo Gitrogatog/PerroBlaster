@@ -2,7 +2,7 @@
 	<PropertyGroup>
 		<OutputType Condition="'$(Configuration)' == 'Debug'">Exe</OutputType>
 		<OutputType Condition="'$(Configuration)' == 'Release'">WinExe</OutputType>
-		<TargetFramework>net9.0</TargetFramework>
+		<TargetFramework>net10.0</TargetFramework>
 		<TargetName>MyGame</TargetName>
 		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 		<GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
@@ -27,6 +27,8 @@
 
 	<PropertyGroup>
 		<DefaultItemExcludes>$(DefaultItemExcludes);lib\**\*;ContentBuilder\**\*</DefaultItemExcludes>
+		<!-- <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    	<CompilerGeneratedFilesOutputPath>Generated2</CompilerGeneratedFilesOutputPath> -->
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -36,7 +38,16 @@
 	<ItemGroup>
 		<ProjectReference Include="lib\MoonWorks\MoonWorks.csproj" />
 		<ProjectReference Include="lib\MoonTools.ECS\MoonTools.ECS.csproj" />
+		<ProjectReference Include="lib\ImGui.NET\ImGui.NET.csproj" />
+		<!-- ContentBuilder\ContentBuilderUI\lib\ImGui.NET\ImGui.NET.csproj -->
+		<!-- <ProjectReference Include="..\Utils\GenericsLibrary\GenericsLibrary.csproj" 
+                    OutputItemType="Analyzer" 
+                    ReferenceOutputAssembly="false"
+					Condition="'$(gen)' == 'true'"
+				/> -->
+		<!-- <Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" /> -->
 	</ItemGroup>
+	<!-- Condition="'$(gen)' == 'true'"  -->
 
 	<!-- The MacOS dynamic loader really sucks! -->
 	<!-- https://github.com/dotnet/runtime/issues/96337 -->

@@ -41,7 +41,6 @@ public class SetSpriteAnimationSystem : MoonTools.ECS.System
                     Set(entity, animation);
                 }
                 else {
-                    Console.WriteLine("hahahh");
                     Set(entity, message.Animation);
                 }
             }

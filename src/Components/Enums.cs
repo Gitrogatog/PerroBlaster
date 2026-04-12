@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
-using System.Xml;
 
 namespace MyGame.Components;
 
@@ -31,6 +30,9 @@ public enum CloseDialogAction {
 public enum TileType
 {
     Solid, Fake, Invisible, Throwable, Spike
+}
+public enum ShotType {
+    
 }
 public enum RectThingType {
     EnterFence, ExitFence,

@@ -6,17 +6,12 @@ using MyGame.Utility;
 
 namespace MyGame;
 
-public static class TileConsts
-{
-    public const int TILE_SIZE = 16;
-    public const int TILE_MULT = 1;
-}
 
 public static class Dimensions
 {
     public const int GAME_W = 320;
     public const int GAME_H = 240;
-    public const int TILE_SIZE = 16;
+    public const int TILE_SIZE = 8;
     public const float INV_TILE_SIZE = 1f / TILE_SIZE;
     public static int ROOM_X => ROOM_X_TILES * TILE_SIZE;
     public static int ROOM_Y => ROOM_Y_TILES * TILE_SIZE;
@@ -71,10 +66,9 @@ public static class Time
 public static class MoveConsts
 {
     public static float MOVE_SPEED => 105;
-    public static float AXE_THROW_SPEED => 250;
-    public static float AXE_RETURN_SPEED => 350;
-    public static float AXE_HELD_OFFSET => 9;
-    public static float AXE_ROTATION_SPEED => 2;
+    public static float JUMP_STRENGTH_PLAYER => 170;
+    public static float GRAVITY => 380;
+    public static float GRAVITY_PLAYER_JUMP => 290;
     public static float ENEMY_INIT_PAUSE_TIME_MOVE => 0.5f;
     public static float ENEMY_INIT_PAUSE_TIME_SHOOT => 0.7f;
     public static float ENEMY_SHOT_SPEED => 100;

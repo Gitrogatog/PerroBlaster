@@ -214,7 +214,7 @@ public class Renderer : MoonTools.ECS.Renderer
                 var rectangle = Get<Rectangle>(entity);
                 // var orientation = Has<Rotation>(entity) ? Get<Rotation>(entity).Value : 0.0f;
                 float orientation = 0;
-                var color = Has<ColorBlend>(entity) ? Get<ColorBlend>(entity).Color : Color.Black;
+                var color = Has<ColorBlend>(entity) ? Get<ColorBlend>(entity).Color : Color.White;
                 // Console.WriteLine($"rect color: {color} has color blend: {Has<ColorBlend>(entity)}");
                 // if(Has<ColorBlend>(entity)) {
                 //     Console.WriteLine(Get<ColorBlend>(entity));

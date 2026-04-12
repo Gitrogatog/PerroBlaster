@@ -4,6 +4,7 @@ using System.Numerics;
 using MoonTools.ECS;
 using MoonWorks.Audio;
 using MoonWorks.Graphics;
+using MoonWorks.Graphics.Font;
 using MyGame.Content;
 using MyGame.Data;
 using MyGame.Utility;
@@ -26,6 +27,7 @@ public readonly record struct CollisionFlags(EffectorFlags EffectorFlags, Effect
 public readonly record struct EnemySpawnPoint(int X, int Y, EnemyType EnemyType);
 public readonly record struct RectangleSpawnPoint(int X, int Y, int Width, int Height, RectThingType Type);
 public readonly record struct IsCheckpoint;
+public readonly record struct SpawnBulletThisFrame(ShotType Type, int X, int Y, Vector2 direction);
 public readonly record struct CollisionForceMoveForOneFrame(Vector2 Direction);
 public readonly record struct FinishStepThisFrame();
 public readonly record struct AttemptTalkThisFrame();
@@ -123,19 +125,69 @@ public readonly record struct AimAngle(Vector2 Angle) {
     public AimAngle(float X, float Y) : this(new Vector2(X, Y)) {}
 }
 
-public readonly record struct Rectangle(int X, int Y, int Width, int Height, EffectorFlags EffectorFlags, EffectedFlags EffectedFlags)
+public readonly record struct RectangleWithFlags(Rectangle Rectangle, EffectorFlags EffectorFlags, EffectedFlags EffectedFlags) {
+    public int X => Rectangle.X;
+    public int Y => Rectangle.Y;
+    public int Width => Rectangle.Width;
+    public int Height => Rectangle.Height;
+    public int Left => Rectangle.X;
+    public int Right => Rectangle.Right;
+    public int Top => Rectangle.Y;
+    public int Bottom => Rectangle.Bottom;
+    public RectangleWithFlags(int X, int Y, int Width, int Height, EffectorFlags EffectorFlags, EffectedFlags EffectedFlags) : this(new Rectangle(X, Y, Width, Height), EffectorFlags, EffectedFlags) { }
+
+    public bool Intersects(RectangleWithFlags other)
+    {
+        return
+           ((int)EffectorFlags & (int)other.EffectedFlags) != 0 &&
+            other.Left < Right &&
+            Left < other.Right &&
+            other.Top < Bottom &&
+            Top < other.Bottom;
+    }
+    public static bool TestOverlap(RectangleWithFlags a, RectangleWithFlags b){
+        return b.Left < a.Right && a.Left < b.Right && b.Top < a.Bottom && a.Top < b.Bottom;
+    }
+
+    public static RectangleWithFlags Union(RectangleWithFlags a, RectangleWithFlags b)
+    {
+        var x = int.Min(a.X, a.X);
+        var y = int.Min(a.Y, b.Y);
+        return new RectangleWithFlags(
+            x,
+            y,
+            int.Max(a.Right, b.Right) - x,
+            int.Max(a.Bottom, b.Bottom) - y,
+            a.EffectorFlags,
+            a.EffectedFlags
+        );
+    }
+
+    public RectangleWithFlags Inflate(int horizontal, int vertical)
+    {
+        return new RectangleWithFlags(
+            X - horizontal,
+            Y - vertical,
+            Width + horizontal * 2,
+            Height + vertical * 2,
+            EffectorFlags,
+            EffectedFlags
+        );
+    }
+}
+
+public readonly record struct Rectangle(int X, int Y, int Width, int Height)
 {
     public int Left => X;
     public int Right => X + Width;
     public int Top => Y;
     public int Bottom => Y + Height;
 
-    public Rectangle(int Width, int Height, EffectorFlags EffectorFlags, EffectedFlags EffectedFlags) : this(-Width / 2, -Height / 2, Width, Height, EffectorFlags, EffectedFlags) { }
+    public Rectangle(int Width, int Height) : this(-Width / 2, -Height / 2, Width, Height) { }
 
     public bool Intersects(Rectangle other)
     {
         return
-           ((int)EffectorFlags & (int)other.EffectedFlags) != 0 &&
             other.Left < Right &&
             Left < other.Right &&
             other.Top < Bottom &&
@@ -146,6 +198,10 @@ public readonly record struct Rectangle(int X, int Y, int Width, int Height, Eff
         return b.Left < a.Right && a.Left < b.Right && b.Top < a.Bottom && a.Top < b.Bottom;
     }
 
+    public static bool TestOverlapWithFlags(Rectangle a, EffectorFlags aFlags, Rectangle b, EffectedFlags bFlags) {
+        return ((long) aFlags & (long) bFlags) != 0 && TestOverlap(a, b);
+    }
+
     public static Rectangle Union(Rectangle a, Rectangle b)
     {
         var x = int.Min(a.X, a.X);
@@ -154,9 +210,7 @@ public readonly record struct Rectangle(int X, int Y, int Width, int Height, Eff
             x,
             y,
             int.Max(a.Right, b.Right) - x,
-            int.Max(a.Bottom, b.Bottom) - y,
-            a.EffectorFlags,
-            a.EffectedFlags
+            int.Max(a.Bottom, b.Bottom) - y
         );
     }
 
@@ -166,16 +220,75 @@ public readonly record struct Rectangle(int X, int Y, int Width, int Height, Eff
             X - horizontal,
             Y - vertical,
             Width + horizontal * 2,
-            Height + vertical * 2,
-            EffectorFlags,
-            EffectedFlags
+            Height + vertical * 2
         );
     }
 }
+
+public readonly record struct FloatRectangle(float X, float Y, float Width, float Height)
+{
+    public float Left => X;
+    public float Right => X + Width;
+    public float Top => Y;
+    public float Bottom => Y + Height;
+
+    public FloatRectangle(float Width, float Height) : this(-Width * 0.5f, -Height * 0.5f, Width, Height) { }
+
+    public bool Intersects(Rectangle other)
+    {
+        return
+            other.Left < Right &&
+            Left < other.Right &&
+            other.Top < Bottom &&
+            Top < other.Bottom;
+    }
+
+    public static bool TestOverlap(FloatRectangle a, FloatRectangle b){
+        return b.Left < a.Right && a.Left < b.Right && b.Top < a.Bottom && a.Top < b.Bottom;
+    }
+
+    public static bool TestOverlapWithFlags(FloatRectangle a, EffectorFlags aFlags, FloatRectangle b, EffectedFlags bFlags) {
+        return ((long) aFlags & (long) bFlags) != 0 && TestOverlap(a, b);
+    }
+
+    public static FloatRectangle Union(Rectangle a, Rectangle b)
+    {
+        var x = float.Min(a.X, a.X);
+        var y = float.Min(a.Y, b.Y);
+        return new FloatRectangle(
+            x,
+            y,
+            float.Max(a.Right, b.Right) - x,
+            float.Max(a.Bottom, b.Bottom) - y
+        );
+    }
+
+    // public Rectangle Inflate(int horizontal, int vertical)
+    // {
+    //     return new Rectangle(
+    //         X - horizontal,
+    //         Y - vertical,
+    //         Width + horizontal * 2,
+    //         Height + vertical * 2
+    //     );
+    // }
+}
+
 public readonly record struct TouchingWall(bool Right);
 public readonly record struct ShouldPerformReset();
 public readonly record struct SpawnOnTimerEnd(ThingType Thing);
-public readonly record struct CauseOfDeath(ThingType Thing);
+public readonly record struct RiseFallAnimation(SpriteAnimationInfoID Rise, SpriteAnimationInfoID Fall) {
+    public RiseFallAnimation(SpriteAnimationInfo rise, SpriteAnimationInfo fall) : this(rise.ID, fall.ID) {}
+}
+public readonly record struct IdleAnimation(SpriteAnimationInfoID Idle) {
+    public IdleAnimation(SpriteAnimationInfo idle) : this(idle.ID) {}
+}
+public readonly record struct WalkAnimation(SpriteAnimationInfoID Walk) {
+    public WalkAnimation(SpriteAnimationInfo walk) : this(walk.ID) {}
+}
+public readonly record struct WalkSpeedModAnimation(SpriteAnimationInfoID Walk, float AnimSpeedMult) {
+    // public WalkSpeedModAnimation(SpriteAnimationInfo Walk, float MaxSpeed) : this(Walk.ID, Walk.FrameRate / MaxSpeed) { }
+}
 public readonly record struct DeathScreen();
 public readonly record struct PreventInput();
 public readonly record struct UUID(int ID);
@@ -199,10 +312,11 @@ public readonly record struct TakeDamageOnContact();
 public readonly record struct DontRepeatDamageUntilStateChange;
 public readonly record struct IgnoreCollision();
 // public readonly record struct ChangeLevel(int LevelID);
-public readonly record struct AddAfterTime<T>(float Time, T Component) : TimedComponent<AddAfterTime<T>> where T : unmanaged
+public readonly record struct AddAfterTime<T>(float Time, T Component) where T : unmanaged
 {
     public AddAfterTime<T> Update(float t)
     {
+        new AddAfterTime<RotateSpeed>(3f, new RotateSpeed(5f));
         return new AddAfterTime<T>(t, Component);
     }
 }
@@ -251,16 +365,18 @@ public readonly record struct PlayContinuousSFX(StaticSoundID StaticSoundID,
 public readonly record struct SetAnimation(SpriteAnimation Animation, bool PreserveFrame = false, bool ForceUpdate = false)
 {
     public SetAnimation(SpriteAnimationInfo animInfo, bool preserveFrame = false, bool forceUpdate = false) : this(new SpriteAnimation(animInfo), preserveFrame, forceUpdate) { }
+    public SetAnimation(SpriteAnimationInfoID animInfo, bool preserveFrame = false, bool forceUpdate = false) : this(new SpriteAnimation(SpriteAnimationInfo.FromID(animInfo)), preserveFrame, forceUpdate) { }
 }
 public readonly record struct Facing(bool Right);
 public readonly record struct RushAtPlayer(Cardinal Direction, float Distance, float Speed);
 public readonly record struct TextSpriteParent();
 public readonly record struct AdvanceCharSpeed(float CharPerSecond);
 public readonly record struct Grounded();
-public readonly record struct Gravity();
+public readonly record struct Gravity(float Value);
 public readonly record struct IntendedMove(Vector2 Value) {
     public IntendedMove(float X, float Y) : this(new Vector2(X, Y)) {}
 }
+public readonly record struct IntendedX(float Value);
 public readonly record struct IntendedMoveOneFrame(Vector2 Value);
 public readonly record struct BecomeSolidWhenNotColliding;
 public readonly record struct MoveSpeed(float Value);

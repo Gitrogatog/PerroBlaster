@@ -1,50 +1,70 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
 using MoonTools.ECS;
 using MyGame.Components;
 using MyGame.Content;
+using MyGame.Data;
 namespace MyGame.Systems;
 
 public class AnimationSystem : MoonTools.ECS.System
 {
-    private Filter PlayerFilter;
+    private Filter IdleFilter;
+    private Filter WalkFilter;
+    private Filter WalkSpeedFilter;
+    private Filter RiseFallFilter;
+    private HashSet<Entity> ProcessedEntities = new HashSet<Entity>();
 
     public AnimationSystem(World world) : base(world)
     {
-        PlayerFilter = FilterBuilder
-            .Include<PlayerAnimationSet>()
+        IdleFilter = FilterBuilder
+            .Include<IdleAnimation>()
+            .Build();
+        WalkFilter = FilterBuilder
+            .Include<WalkAnimation>()
+            .Build();
+        WalkSpeedFilter = FilterBuilder
+            .Include<WalkSpeedModAnimation>()
+            .Build();
+        RiseFallFilter = FilterBuilder
+            .Include<RiseFallAnimation>()
             .Build();
     }
 
     public override void Update(TimeSpan delta)
     {
-        foreach (var entity in PlayerFilter.Entities)
-        {
-            var animSet = Get<PlayerAnimationSet>(entity);
-            // if (Has<IsPivoting>(entity))
-            // {
-            //     Set(entity, new SetAnimation(SpriteAnimations.Skeleton_Pivot));
-            // }
-            var velocity = Has<Velocity>(entity) ? Get<Velocity>(entity).Value : Vector2.Zero;
-            if (!Has<Grounded>(entity))
-            {
-                Set(entity, new SetAnimation(animSet.Jump));
-            }
-            else if (MathF.Abs(velocity.X) > 1)
-            {
-                if (Has<Facing>(entity) && Get<Facing>(entity).Right != (velocity.X > 0))
-                {
-                    Set(entity, new SetAnimation(animSet.Pivot));
-                }
-                else
-                {
-                    Set(entity, new SetAnimation(animSet.Walk));
-                }
-            }
-            else
-            {
-                Set(entity, new SetAnimation(animSet.Idle));
+        ProcessedEntities.Clear();
+        foreach(var entity in RiseFallFilter.Entities) {
+            if(ProcessedEntities.Contains(entity)) continue;
+            if(!Has<Grounded>(entity)) {
+                var verticalVelocity = Get<Velocity>(entity).Y;
+                if(verticalVelocity > 0) SetAnimation(entity, Get<RiseFallAnimation>(entity).Fall);
+                else SetAnimation(entity, Get<RiseFallAnimation>(entity).Rise);
             }
         }
+        foreach(var entity in WalkSpeedFilter.Entities) {
+            if(ProcessedEntities.Contains(entity)) continue;
+            var horizontalVelocity = Get<Velocity>(entity).X;
+            if(horizontalVelocity != 0) {
+                (var anim, float animSpeedMult) = Get<WalkSpeedModAnimation>(entity);
+                Set(entity, new SetAnimation(new SpriteAnimation(SpriteAnimationInfo.FromID(anim), animSpeedMult * MathF.Abs(horizontalVelocity))));
+                ProcessedEntities.Add(entity);
+            }
+        }
+        foreach(var entity in WalkFilter.Entities) {
+            if(ProcessedEntities.Contains(entity)) continue;
+            var horizontalVelocity = Get<Velocity>(entity).X;
+            if(horizontalVelocity != 0) {
+                SetAnimation(entity, Get<WalkAnimation>(entity).Walk);
+            }
+        }
+        foreach(var entity in IdleFilter.Entities) {
+            if(ProcessedEntities.Contains(entity)) continue;
+            SetAnimation(entity, Get<IdleAnimation>(entity).Idle);
+        }
+    }
+    void SetAnimation(Entity entity, SpriteAnimationInfoID animID) {
+        Set(entity, new SetAnimation(animID));
+        ProcessedEntities.Add(entity);
     }
 }

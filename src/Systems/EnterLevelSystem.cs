@@ -25,7 +25,8 @@ public class EnterLevelSystem : MoonTools.ECS.System
                 var entity = CreateEntity();
                 Set(entity, new Position(x * 16, y * 16));
                 Set(entity, new Velocity());
-                Set(entity, new Rectangle(16, 16, EffectorFlags.CanTouchWall, EffectedFlags.None));
+                Set(entity, new Rectangle(16, 16));
+                // Set(entity, EffectorFlags.)
                 Set(entity, new MoveSpeed(100));
                 Set(entity, new ControlledByPlayer());
                 Set(entity, new CollidesWithSolids());
