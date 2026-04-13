@@ -42,7 +42,6 @@ public readonly record struct PlaySFXOnInteract(StaticSoundID ID);
 public readonly record struct PlaySFXOnSelect(StaticSoundID ID);
 public readonly record struct UIOption;
 public readonly record struct ChangeSceneOnSelect(GameSceneType Scene);
-public readonly record struct SetCharacterTypeOnSelect(CharacterType Value);
 public readonly record struct CloseWindowOnSelect;
 public readonly record struct CloseGameWindow;
 public readonly record struct LoadVideo;
@@ -197,6 +196,15 @@ public readonly record struct Rectangle(int X, int Y, int Width, int Height)
     public static bool TestOverlap(Rectangle a, Rectangle b){
         return b.Left < a.Right && a.Left < b.Right && b.Top < a.Bottom && a.Top < b.Bottom;
     }
+
+    public static bool HorizontalOverlap(Rectangle a, Rectangle b)
+        => b.Left < a.Right && a.Left < b.Right;
+
+    public static bool VerticalOverlap(Rectangle a, Rectangle b)
+        => b.Top < a.Bottom && a.Top < b.Bottom;
+
+    public static bool BottomEdgeOverlap(Rectangle top, Rectangle bottom) =>
+        top.Bottom - 1 == bottom.Top && Rectangle.HorizontalOverlap(top, bottom);
 
     public static bool TestOverlapWithFlags(Rectangle a, EffectorFlags aFlags, Rectangle b, EffectedFlags bFlags) {
         return ((long) aFlags & (long) bFlags) != 0 && TestOverlap(a, b);

@@ -7,8 +7,8 @@ namespace MyGame.Components;
 public enum GameSceneType {
     Intro, StartMenu, Level, EndMenu, GameOver, DarkWorld, VideoTest
 }
-public enum CharacterType {
-    Valsu, Lejes, Lux, Daisy
+public enum DirectionCollisionType {
+    None, Up, Down, Left, Right
 }
 public enum ClickableState
 {
@@ -32,7 +32,7 @@ public enum TileType
     Solid, Fake, Invisible, Throwable, Spike
 }
 public enum ShotType {
-    
+
 }
 public enum RectThingType {
     EnterFence, ExitFence,
@@ -52,7 +52,7 @@ public enum EffectorFlags {
     CanDamage = 1,
     CanTriggerEvent = 1 << 1,
     CanTouchWall = 1 << 2,
-    CanTouchPit = 1 << 3,
+    CanTouchDownPlatform = 1 << 3,
 }
 [Flags]
 public enum EffectedFlags {
@@ -60,7 +60,7 @@ public enum EffectedFlags {
     CanTakeDamage = 1,
     CanPerformEvent = 1 << 1,
     IsWall = 1 << 2,
-    IsPit = 1 << 3,
+    IsDownPlatform = 1 << 3, // movement must be downward
 }
 public enum AmbushTrigger
 {

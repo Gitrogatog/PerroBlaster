@@ -62,15 +62,26 @@ public class MotionWithFlags : MoonTools.ECS.System
         Miss, HitEntity, HitTilemap
     }
 
-    (Entity other, SolidCheck hit) CheckSolidCollision(Entity e, Rectangle rect, EffectorFlags flags)
+    (Entity other, SolidCheck hit) CheckSolidCollision(Entity e, Rectangle rect, EffectorFlags flags, Vector2 moveDir)
     {
         foreach ((Entity other, Rectangle otherRect, EffectorFlags otherEffectorFlags, EffectedFlags otherEffectedFlags) in SolidSpatialHash.Retrieve(e, rect))
         {
-            if (Rectangle.TestOverlapWithFlags(rect, flags, otherRect, otherEffectedFlags))
-            {
-                Console.WriteLine($"coll: {e} {rect} on {other} {otherRect}");
-                return (other, SolidCheck.HitEntity);
+            if(((long)flags & (long)otherEffectedFlags) != 0) {
+                if((otherEffectedFlags & EffectedFlags.IsDownPlatform) != 0) {
+                    if(moveDir.Y > 0 && 
+                        rect.Bottom - 1 == otherRect.Top &&
+                        Rectangle.HorizontalOverlap(rect, otherRect)
+                    )
+                    {
+                        return (other, SolidCheck.HitEntity);
+                    }
+                }
+                else if (Rectangle.TestOverlap(rect, otherRect))
+                {
+                    return (other, SolidCheck.HitEntity);
+                }
             }
+            
         }
 
         return (default, SolidCheck.Miss);
@@ -91,7 +102,6 @@ public class MotionWithFlags : MoonTools.ECS.System
 
         // var movement = new Vector2(velocity.X, velocity.Y) * dt;
         var targetPosition = position + movement;
-        Console.WriteLine($"curr: {position} target: {targetPosition} move: {movement}");
 
         var xEnum = new IntegerEnumerator(position.X, targetPosition.X);
         var yEnum = new IntegerEnumerator(position.Y, targetPosition.Y);
@@ -107,7 +117,7 @@ public class MotionWithFlags : MoonTools.ECS.System
             var newPos = new Position(x, position.Y);
             var rect = GetWorldRect(newPos, r);
 
-            (var other, var hit) = CheckSolidCollision(e, rect, flags);
+            (var other, var hit) = CheckSolidCollision(e, rect, flags, new Vector2(MathF.Sign(movement.X), 0));
 
             xHit = hit;
 
@@ -126,12 +136,11 @@ public class MotionWithFlags : MoonTools.ECS.System
             var newPos = new Position(mostRecentValidXPosition, y);
             var rect = GetWorldRect(newPos, r);
 
-            (var other, var hit) = CheckSolidCollision(e, rect, flags);
+            (var other, var hit) = CheckSolidCollision(e, rect, flags, new Vector2(0, movement.Y));
             yHit = hit;
 
             if (yHit != SolidCheck.Miss && Has<CollidesWithSolids>(e)) // && Has<Solid>(other)
             {
-                Console.WriteLine($"colliding with: {GetTag(other)} ${other}");
                 movement.Y = mostRecentValidYPosition - position.Y;
                 position = position.SetY(position.Y); // truncates y coord
                 break;
@@ -152,14 +161,7 @@ public class MotionWithFlags : MoonTools.ECS.System
         var movement = new Vector2(velocity.Value.X, velocity.Value.Y) * dt;
         var targetPosition = position + movement;
 
-        var xEnum = new IntegerEnumerator(position.X, targetPosition.X);
-        var yEnum = new IntegerEnumerator(position.Y, targetPosition.Y);
-
-        int mostRecentValidXPosition = position.X;
-        int mostRecentValidYPosition = position.Y;
-
-        SolidCheck xHit = SolidCheck.Miss;
-        SolidCheck yHit = SolidCheck.Miss;
+        bool isDownPlatform = (flags & EffectedFlags.IsDownPlatform) != 0; 
 
         if(movement.X != 0) {
             PushableEntities.Clear();
@@ -175,7 +177,7 @@ public class MotionWithFlags : MoonTools.ECS.System
                     var pushBaseRect = Get<Rectangle>(pushable);
                     var pushRect = GetWorldRect(pushPos, pushBaseRect);
                     // 
-                    if(Rectangle.TestOverlap(endRect, pushRect)) {
+                    if(Rectangle.TestOverlap(endRect, pushRect) && !isDownPlatform) {
                         // var pushRect = Get<Rectangle>(pushable);
                         // var pushWorldRect = GetWorldRect(pushPos, pushRect);
                         var pushDir = movement.X < 0 ?
@@ -184,12 +186,16 @@ public class MotionWithFlags : MoonTools.ECS.System
                         var result = CollidesWithSolidSweepTest(pushable, pushPos, pushDir, pushBaseRect);
                         Set(pushable, result);
                     }
-                    else if(Rectangle.TestOverlap(rect, new Rectangle(pushRect.X, pushRect.Y, pushRect.Width, pushRect.Height + 1))) {
+                    else if(
+                        // Rectangle.BottomEdgeOverlap(pushRect, rect)
+                        Rectangle.TestOverlap(
+                            new Rectangle(rect.X, rect.Top, rect.Width, 1),
+                            new Rectangle(pushRect.X, pushRect.Bottom, pushRect.Width, 1))
+                    ) {
                         // var ridingPos = Get<Position>(pushable);
                         // var ridingRect = Get<Rectangle>(pushable);
                         var result = CollidesWithSolidSweepTest(pushable, pushPos, new Vector2(targetPosition.X - position.X, 0), pushBaseRect);
                         Set(pushable, result);
-                        // Console.WriteLine("riding!");
                     }
                 }
             }
@@ -213,7 +219,8 @@ public class MotionWithFlags : MoonTools.ECS.System
                     var pushFloatRect = GetWorldFloatRect(pushPos, pushBaseRect);
                     // if(Rectangle.TestOverlap(rect, new Rectangle(pushRect.X, )))
                     if(
-                        Rectangle.TestOverlap(endRect, pushRect)
+                        Rectangle.TestOverlap(endRect, pushRect) &&
+                        (!isDownPlatform || (movement.Y < 0 && !Rectangle.TestOverlap(startRect, pushRect)))
                         // FloatRectangle.TestOverlap(floatRect, pushFloatRect)
                     ) {
                         // var pushDir = movement.Y < 0 ?
@@ -222,20 +229,21 @@ public class MotionWithFlags : MoonTools.ECS.System
                         var pushDir = movement.Y < 0 ?
                             new Vector2(0, endRect.Top - pushRect.Bottom)
                             : new Vector2(0, endRect.Bottom - pushRect.Top);
-                    Console.WriteLine("pre");
                         var result = CollidesWithSolidSweepTest(pushable, pushPos, pushDir, pushBaseRect);
                         Set(pushable, result);
-                        Console.WriteLine($"psuhing! dir:{pushDir} startPos:{pushPos} endPos:{result}");
                     }
                     else if(
-                        Rectangle.TestOverlap(startRect, new Rectangle(pushRect.X, pushRect.Y, pushRect.Width, pushRect.Height + 1))
+                        // Rectangle.BottomEdgeOverlap(pushRect, startRect)
+                        // Rectangle.TestOverlap(startRect, new Rectangle(pushRect.X, pushRect.Bottom + 1, pushRect.Width, pushRect.Height + 1))
+                        Rectangle.TestOverlap(
+                            new Rectangle(rect.X, rect.Top, rect.Width, 1),
+                            new Rectangle(pushRect.X, pushRect.Bottom, pushRect.Width, 1))
                         // FloatRectangle.TestOverlap(startFloatRect, new FloatRectangle(pushFloatRect.X, pushFloatRect.Y, pushFloatRect.Width, pushFloatRect.Height + 1))
                     ) {
                         // var ridingPos = Get<Position>(pushable);
                         // var ridingRect = Get<Rectangle>(pushable);
                         var result = CollidesWithSolidSweepTest(pushable, pushPos, new Vector2(0, targetPosition.Y - position.Y), pushBaseRect);
                         Set(pushable, result);
-                        Console.WriteLine("riding!");
                     }
                 }
             }
@@ -295,7 +303,7 @@ public class MotionWithFlags : MoonTools.ECS.System
             var newPos = new Position(x, position.Y);
             rect = GetWorldRect(newPos, r);
 
-            (var other, var hit) = CheckSolidCollision(e, rect, flags);
+            (var other, var hit) = CheckSolidCollision(e, rect, flags, new Vector2(movement.X, 0));
 
             xHit = hit;
 
@@ -338,7 +346,7 @@ public class MotionWithFlags : MoonTools.ECS.System
             var newPos = new Position(mostRecentValidXPosition, y);
             rect = GetWorldRect(newPos, r);
 
-            (var other, var hit) = CheckSolidCollision(e, rect, flags);
+            (var other, var hit) = CheckSolidCollision(e, rect, flags, new Vector2(0, movement.Y));
             yHit = hit;
 
             if (yHit != SolidCheck.Miss && Has<CollidesWithSolids>(e)) // && Has<Solid>(other)
@@ -585,10 +593,10 @@ public class MotionWithFlags : MoonTools.ECS.System
             var upRectangle = GetWorldRect(upPos, rectangle);
             var downRectangle = GetWorldRect(downPos, rectangle);
 
-            var (leftOther, leftCollided) = CheckSolidCollision(entity, leftRectangle, flags);
-            var (rightOther, rightCollided) = CheckSolidCollision(entity, rightRectangle, flags);
-            var (upOther, upCollided) = CheckSolidCollision(entity, upRectangle, flags);
-            var (downOther, downCollided) = CheckSolidCollision(entity, downRectangle, flags);
+            var (leftOther, leftCollided) = CheckSolidCollision(entity, leftRectangle, flags, new Vector2(-1, 0));
+            var (rightOther, rightCollided) = CheckSolidCollision(entity, rightRectangle, flags, new Vector2(1, 0));
+            var (upOther, upCollided) = CheckSolidCollision(entity, upRectangle, flags, new Vector2(0, -1));
+            var (downOther, downCollided) = CheckSolidCollision(entity, downRectangle, flags, new Vector2(0, 1));
 
             if (leftCollided == SolidCheck.HitEntity)
             {
@@ -654,7 +662,6 @@ public class MotionWithFlags : MoonTools.ECS.System
         // }
         int flagID = 0;
         foreach(var stuff in InteractSpatialHash.Collisions) {
-            // if(stuff.Count > 0) Console.WriteLine($"flag {flagID} interaction > 0!");
             flagID++;
         }
         foreach((var source, var target) in Collisions(EffectorFlags.CanDamage)) {

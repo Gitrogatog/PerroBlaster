@@ -11,7 +11,7 @@
 	"iid": "914b8860-21a0-11f1-bc33-1b64e530538a",
 	"jsonVersion": "1.5.3",
 	"appBuildId": 473703,
-	"nextUid": 14,
+	"nextUid": 15,
 	"identifierStyle": "Capitalize",
 	"toc": [],
 	"worldLayout": "LinearHorizontal",
@@ -394,6 +394,43 @@
 					"allowedRefsEntityUid": null,
 					"allowedRefTags": [],
 					"tilesetUid": null
+				},
+				{
+					"identifier": "IsPlatform",
+					"doc": null,
+					"__type": "Bool",
+					"uid": 14,
+					"type": "F_Bool",
+					"isArray": false,
+					"canBeNull": false,
+					"arrayMinLength": null,
+					"arrayMaxLength": null,
+					"editorDisplayMode": "NameAndValue",
+					"editorDisplayScale": 1,
+					"editorDisplayPos": "Above",
+					"editorLinkStyle": "StraightArrow",
+					"editorDisplayColor": null,
+					"editorAlwaysShow": false,
+					"editorShowInWorld": true,
+					"editorCutLongValues": true,
+					"editorTextSuffix": null,
+					"editorTextPrefix": null,
+					"useForSmartColor": false,
+					"exportToToc": false,
+					"searchable": false,
+					"min": null,
+					"max": null,
+					"regex": null,
+					"acceptFileTypes": null,
+					"defaultOverride": null,
+					"textLanguageMode": null,
+					"symmetricalRef": false,
+					"autoChainRef": true,
+					"allowOutOfLevelRef": true,
+					"allowedRefs": "OnlySame",
+					"allowedRefsEntityUid": null,
+					"allowedRefTags": [],
+					"tilesetUid": null
 				}
 			]
 		}
@@ -570,7 +607,7 @@
 						},
 						{
 							"__identifier": "Solid",
-							"__grid": [6,7],
+							"__grid": [4,6],
 							"__pivot": [0,0],
 							"__tags": [],
 							"__tile": null,
@@ -579,10 +616,56 @@
 							"width": 16,
 							"height": 16,
 							"defUid": 10,
-							"px": [96,112],
+							"px": [64,96],
 							"fieldInstances": [
-								{ "__identifier": "XVelocity", "__type": "Float", "__value": -100, "__tile": null, "defUid": 11, "realEditorValues": [{ "id": "V_Float", "params": [-100] }] },
-								{ "__identifier": "YVelocity", "__type": "Float", "__value": -150, "__tile": null, "defUid": 12, "realEditorValues": [{ "id": "V_Float", "params": [-150] }] }
+								{ "__identifier": "XVelocity", "__type": "Float", "__value": 60, "__tile": null, "defUid": 11, "realEditorValues": [{ "id": "V_Float", "params": [60] }] },
+								{ "__identifier": "YVelocity", "__type": "Float", "__value": 0, "__tile": null, "defUid": 12, "realEditorValues": [{ "id": "V_Float", "params": [0] }] },
+								{ "__identifier": "IsPlatform", "__type": "Bool", "__value": true, "__tile": null, "defUid": 14, "realEditorValues": [{
+									"id": "V_Bool",
+									"params": [ true ]
+								}] }
+							]
+						},
+						{
+							"__identifier": "Solid",
+							"__grid": [4,10],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": null,
+							"__smartColor": "#3E2731",
+							"iid": "ebe7e520-21a0-11f1-b4a0-8d30636324c2",
+							"width": 16,
+							"height": 16,
+							"defUid": 10,
+							"px": [64,160],
+							"fieldInstances": [
+								{ "__identifier": "XVelocity", "__type": "Float", "__value": 50, "__tile": null, "defUid": 11, "realEditorValues": [{ "id": "V_Float", "params": [50] }] },
+								{ "__identifier": "YVelocity", "__type": "Float", "__value": -120, "__tile": null, "defUid": 12, "realEditorValues": [{ "id": "V_Float", "params": [-120] }] },
+								{ "__identifier": "IsPlatform", "__type": "Bool", "__value": false, "__tile": null, "defUid": 14, "realEditorValues": [{
+									"id": "V_Bool",
+									"params": [ false ]
+								}] }
+							]
+						},
+						{
+							"__identifier": "Solid",
+							"__grid": [3,8],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": null,
+							"__smartColor": "#3E2731",
+							"iid": "f01191a0-21a0-11f1-b4a0-f9a94132eb79",
+							"width": 16,
+							"height": 16,
+							"defUid": 10,
+							"px": [48,128],
+							"fieldInstances": [
+								{ "__identifier": "XVelocity", "__type": "Float", "__value": 100, "__tile": null, "defUid": 11, "realEditorValues": [{ "id": "V_Float", "params": [100] }] },
+								{ "__identifier": "YVelocity", "__type": "Float", "__value": 0, "__tile": null, "defUid": 12, "realEditorValues": [] },
+								{ "__identifier": "IsPlatform", "__type": "Bool", "__value": true, "__tile": null, "defUid": 14, "realEditorValues": [{
+									"id": "V_Bool",
+									"params": [ true ]
+								}] }
 							]
 						}
 					]
@@ -707,7 +790,8 @@
 							"px": [112,192],
 							"fieldInstances": [
 								{ "__identifier": "XVelocity", "__type": "Float", "__value": 0, "__tile": null, "defUid": 11, "realEditorValues": [] },
-								{ "__identifier": "YVelocity", "__type": "Float", "__value": -100, "__tile": null, "defUid": 12, "realEditorValues": [{ "id": "V_Float", "params": [-100] }] }
+								{ "__identifier": "YVelocity", "__type": "Float", "__value": -100, "__tile": null, "defUid": 12, "realEditorValues": [{ "id": "V_Float", "params": [-100] }] },
+								{ "__identifier": "IsPlatform", "__type": "Bool", "__value": false, "__tile": null, "defUid": 14, "realEditorValues": [] }
 							]
 						}
 					]

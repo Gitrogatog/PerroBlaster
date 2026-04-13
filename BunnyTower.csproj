@@ -19,9 +19,11 @@
 	<ItemGroup>
 		<Content Include="Content\**\*.*">
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+			<Watch>true</Watch>
 		</Content>
 		<Content Include="ContentStatic\**\*.*">
 			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+			<Watch>true</Watch>
 		</Content>
 	</ItemGroup>
 

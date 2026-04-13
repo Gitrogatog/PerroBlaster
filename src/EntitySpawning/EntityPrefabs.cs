@@ -40,7 +40,7 @@ public static class EntityPrefabs
         
         Set(entity, new MoveSpeed(moveSpeed));
         Set(entity, EffectedFlags.CanTakeDamage);
-        Set(entity, EffectorFlags.CanTouchWall);
+        Set(entity, EffectorFlags.CanTouchWall | EffectorFlags.CanTouchDownPlatform);
         Set(entity, new DrawAsRectangle());
         Set(entity, new Depth(0.0000001f));
         Set(entity, new ColorBlend(new Color(255, 0, 0)));
@@ -345,7 +345,7 @@ internal class EntityManipulator : Manipulator
         Entity entity = CreateEntityOnTileGrid(x, y);
         Set(entity, new ControlledByPlayer());
         Set(entity, new Rectangle(10, 10));
-        Set(entity, EffectorFlags.CanTouchPit);
+        Set(entity, EffectorFlags.CanTouchWall);
         Set(entity, EffectedFlags.CanTakeDamage);
         // , EffectorFlags.CanTouchWall, EffectedFlags.CanTakeDamage
         

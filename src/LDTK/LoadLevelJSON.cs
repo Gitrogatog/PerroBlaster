@@ -221,7 +221,13 @@ public class LoadLevelJSON : MoonTools.ECS.Manipulator
                 Set(entity, new Velocity(GetFloatField(entityInstance, "XVelocity"), GetFloatField(entityInstance, "YVelocity")));
                 Set(entity, new Rectangle(16, 16));
                 Set(entity, new Solid());
-                Set(entity, EffectedFlags.IsWall);
+                if(GetBoolField(entityInstance, "IsPlatform")) {
+                    Set(entity, EffectedFlags.IsDownPlatform);
+                }
+                else {
+                    Set(entity, EffectedFlags.IsWall);
+                }
+                
                 Set(entity, new DestroyOnLoad());
                 Set(entity, new DrawAsRectangle());
                 break;
