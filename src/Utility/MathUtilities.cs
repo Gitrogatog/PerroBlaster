@@ -83,4 +83,12 @@ public static class MathUtils
         return value - (float)Math.Truncate(value);
     }
     public static float Frac01(float value) => value - MathF.Floor(value);
+    public static Vector2 InitialProjectileVelocity(float startX, float startY, float endX, float endY, float height, float gravity) {
+        float peakY = MathF.Max(startY, endY) + height;
+        float ySpeed = MathF.Sqrt(2 * gravity * (peakY - startY));
+        float timeGoingUp = MathF.Sqrt(2 * (peakY - startY) / gravity);
+        float timeGoingDown = MathF.Sqrt(2 * (peakY - endY) * gravity);
+        float xSpeed = (endX - startX) / (timeGoingDown + timeGoingUp);
+        return new Vector2(xSpeed, -ySpeed);
+    }
 }

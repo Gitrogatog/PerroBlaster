@@ -38,6 +38,12 @@ public readonly record struct Position
         return new Position(RawPosition.X, (float)y);
     }
 
+    public void Deconstruct(out int x, out int y)
+    {
+        x = X;
+        y = Y;
+    }
+
     public static Position operator +(Position a, Position b)
     {
         return new Position(a.RawPosition + b.RawPosition);

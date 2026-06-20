@@ -138,6 +138,7 @@ public class LoadLevelJSON : MoonTools.ECS.Manipulator
             int tileId = (int)tile.t;
             // bool isAnimated = tilesetIdToEnum["Animated"].Contains(tileId);
             bool hasCollision = tileEnumSet["Solid"].Contains(tileId);
+            bool oneway = tileEnumSet["OneWay"].Contains(tileId);
             MoonTools.ECS.Entity entity;
             if(customDataSet.TryGetValue(tileId, out string animName)) {
                 SpriteAnimationInfo tileAnim = SpriteAnimations.Lookup(animName);
@@ -151,7 +152,12 @@ public class LoadLevelJSON : MoonTools.ECS.Manipulator
             }
             if(hasCollision) {
                 EntityPrefabs.AddSolidCollision(entity, new Rectangle(8, 8), EffectedFlags.IsWall);
-                Set(entity, new DrawAsRectangle());
+                // Set(entity, new DrawAsRectangle());
+                // EntityPrefabs.AddSolidTileCollision(entity, levelX / 16, levelY / 16);
+            }
+            else if(oneway) {
+                EntityPrefabs.AddSolidCollision(entity, new Rectangle(8, 8), EffectedFlags.IsDownPlatform);
+                // Set(entity, new DrawAsRectangle());
                 // EntityPrefabs.AddSolidTileCollision(entity, levelX / 16, levelY / 16);
             }
         }
@@ -215,6 +221,12 @@ public class LoadLevelJSON : MoonTools.ECS.Manipulator
                 EntityPrefabs.CreateTestHitbox(posX, posY);
                 break;
             }
+            case "Enemy": {
+                EnemyType enemyType = ConvertEnum<EnemyType>.ToEnum(GetStringField(entityInstance, "EnemyType"));
+                bool facing = GetBoolField(entityInstance, "Facing");
+                EntityPrefabs.MakeEnemy(enemyType, posX, posY, facing);
+                break;
+            }
             case "Solid": {
                 var entity = CreateEntity("SOLID");
                 Set(entity, new Position(posX, posY));
@@ -239,53 +251,6 @@ public class LoadLevelJSON : MoonTools.ECS.Manipulator
             //     }
             //     break;
             // }
-            case "LevelTransition": {
-                var entity = EntityPrefabs.CreateEntityOnTileGrid(tileX, tileY);
-                // Set(entity, new DestroyOnLoad());
-                // Set(entity, new TilePosition(tileX, tileY));
-                Set(entity, new UUID(TextStorage.GetID(entityInstance.iid)));
-                string levelTarget = GetLevelRef(entityInstance, "Location");
-                string exitTarget = GetEntityRef(entityInstance, "Location");
-                Set(entity, new ChangeLevelOnInteract(levelIds[levelTarget], TextStorage.GetID(exitTarget)));
-                AddStepTalkInteract(entity, entityInstance);
-                string soundID = GetStringField(entityInstance, "SoundID");
-                switch(soundID) {
-                    case "Pass":{
-                        Console.WriteLine("Pass sound!");
-                        Set(entity, new PlaySFXOnInteract(StaticAudio.Move));
-                        break;
-                    }
-                    case "Door": {
-                        Console.WriteLine("open sound!");
-                        Set(entity, new PlaySFXOnInteract(StaticAudio.Open1));
-                        break;
-                    }
-                    default:{
-                        Console.WriteLine("no id found for: " + soundID);
-                        break;
-                    }
-                }
-                break;
-            }
-            case "LevelExit": {
-                var entity = EntityPrefabs.CreateEntityOnTileGrid(tileX, tileY);
-                // Set(entity, new DestroyOnLoad());
-                // Set(entity, new TilePosition(tileX, tileY));
-                Set(entity, new UUID(TextStorage.GetID(entityInstance.iid)));
-                break;
-            }
-            case "Dialog": {
-                Console.WriteLine("creating dialog");
-                var entity = EntityPrefabs.CreateEntityOnTileGrid(tileX, tileY);
-                string dialog = GetStringField(entityInstance, "Dialog");
-                
-                CloseDialogAction action = ConvertStringEnum<CloseDialogAction>.ToEnum(GetStringField(entityInstance, "EventOnFinish"));
-                Console.WriteLine("dialog action " + action);
-                Set(entity, new DisplayDialogOnInteract(TextStorage.GetID(dialog), action));
-                Set(entity, new CanBeTalked());
-                
-                break;
-            }
             case "DialogOnEnter": {
                 string dialog = GetStringField(entityInstance, "Dialog");
                 EntityPrefabs.CreateTimedMessage(new DisplayDialog(TextStorage.GetID(dialog), CloseDialogAction.None), 0.6f);
@@ -302,7 +267,7 @@ public class LoadLevelJSON : MoonTools.ECS.Manipulator
                     _ => StreamingAudio.rm_open01
                 };
                 Set(CreateEntity(), new StopMusicUnless(id));
-                Set(CreateEntity(), new AddAfterTime<PlayMusic>(0.5f, new PlayMusic(id)));
+                Set(CreateEntity(), new AddAfterTime<PlayMusic>(new PlayMusic(id), 0.5f));
                 break;
             }
         }

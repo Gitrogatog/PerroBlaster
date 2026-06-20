@@ -3,7 +3,9 @@ namespace MyGame.Systems;
 using System;
 using MoonTools.ECS;
 using MyGame.Components;
+using MyGame.Relations;
 using MyGame.Spawn;
+using MyGame.Utility;
 
 public class TimerSystem : MoonTools.ECS.System
 {
@@ -33,6 +35,12 @@ public class TimerSystem : MoonTools.ECS.System
                     Console.WriteLine($"timer creating {thing} at {pos}");
                     EntityPrefabs.CreateThing(thing, pos.X, pos.Y);
                 }
+                if(Has<ShootOnTimerEnd>(entity)) {
+                    (ShotType shotType, AimType aimType) = Get<ShootOnTimerEnd>(entity);
+                    if(HasOutRelation<Owner>(entity)) {
+                        EntityPrefabs.AttemptPerformShot(OutRelationSingleton<Owner>(entity), shotType, aimType);
+                    }
+                }
                 if (Has<CreateAnimationEntityOnTimerEnd>(entity))
                 {
                     var data = Get<CreateAnimationEntityOnTimerEnd>(entity);
@@ -61,6 +69,7 @@ public class TimerSystem : MoonTools.ECS.System
                     Globals.CurrentRoomX = -1000;
                     Globals.CurrentRoomY = -1000;
                 }
+                EntityPrefabs.KillEntity(entity);
                 Destroy(entity);
             }
 

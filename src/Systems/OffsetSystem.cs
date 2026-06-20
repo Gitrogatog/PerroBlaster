@@ -19,6 +19,10 @@ public class OffsetSystem : MoonTools.ECS.System
 
     public override void Update(TimeSpan delta)
     {
+        if(Some<RootUI>()) {
+            var entity = GetSingletonEntity<RootUI>();
+            MoveChildren(entity, new Position(), false);
+        }
         foreach(var entity in SpinFilter.Entities){
             if(!HasOutRelation<Offset>(entity)) continue;
             (float distance, float speed, float progress) = Get<SpinOffset>(entity);
@@ -57,6 +61,26 @@ public class OffsetSystem : MoonTools.ECS.System
                 float y = parentPos.Y + GetRelationData<FollowYWithOffset>(parent, child).Offset;
                 Set(child, new Position(childPos.X, y));
             }
+        }
+        
+    }
+    // parent: parent position
+    // forceUpdate: parent moved last frame, must update
+    // situations where we need to update:
+    // - parent updated (forceUpdate = true)
+    // - expected final position is different from last position
+    void MoveChildren(Entity entity, Position parent, bool forceUpdate) {
+        // var localPosition = Has<LocalPosition>(entity) ? Get<LocalPosition>(entity).Value : new Position(0, 0);
+        if(forceUpdate || Has<MarkForUpdatePosition>(entity)) { // !Has<LastPosition>(entity) || Get<LastPosition>(entity).Value != localPosition 
+            Remove<MarkForUpdatePosition>(entity);
+            if(TryGet<LocalPosition>(entity, out LocalPosition localPosition)) {
+                parent += localPosition.Value;
+            }
+            Set(entity, parent);
+            forceUpdate = true;
+        }
+        foreach(var child in OutRelations<Child>(entity)) {
+            MoveChildren(child, parent, forceUpdate);
         }
     }
 }

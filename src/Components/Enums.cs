@@ -7,15 +7,16 @@ namespace MyGame.Components;
 public enum GameSceneType {
     Intro, StartMenu, Level, EndMenu, GameOver, DarkWorld, VideoTest
 }
-public enum DirectionCollisionType {
-    None, Up, Down, Left, Right
+public enum EnemyState {
+    Idle, Hurt, Fight
 }
 public enum ClickableState
 {
     Idle, Hover, Click
 }
 public enum EnemyType {
-    Square, Diamond, Circle, Triangle, Pentagon
+    Wander, Jumper, Snowblob, TallFlower, Tumbleweed, Mudman, JumpFlower, Flutter, Chaser, Throw, BombThrow,
+    JumpShootOnLand, JumpShootPeak,
 }
 public enum BulletPattern {
     Single, Triple
@@ -32,7 +33,11 @@ public enum TileType
     Solid, Fake, Invisible, Throwable, Spike
 }
 public enum ShotType {
-
+    Player, Flower, Fireball, Rock, Bomb
+}
+public enum AimType {
+    Facing, AimAngle, AimAndFacing,
+    Player, PlayerArc
 }
 public enum RectThingType {
     EnterFence, ExitFence,
@@ -46,6 +51,9 @@ public enum Cardinal
     Negative = Up | Left,
     Positive = Down | Right
 }
+public enum Vertical {
+    None, Up, Down
+}
 [Flags]
 public enum EffectorFlags {
     None,
@@ -53,6 +61,9 @@ public enum EffectorFlags {
     CanTriggerEvent = 1 << 1,
     CanTouchWall = 1 << 2,
     CanTouchDownPlatform = 1 << 3,
+
+    AllWall = CanTouchWall | CanTouchDownPlatform,
+    DamageAllWall = CanDamage | AllWall,
 }
 [Flags]
 public enum EffectedFlags {
@@ -67,7 +78,7 @@ public enum AmbushTrigger
     EqualX, EqualY, EqualXGreaterThanY, EqualXLessThanY, GreaterThanXEqualY, LessThanXEqualY
 }
 
-public static class MyConvertEnum
+public static class EnumUtils
 {
     public static Cardinal ToCardinal(string s) =>
         s switch
@@ -100,7 +111,7 @@ public static class MyConvertEnum
     // };
 
 }
-public static class ConvertStringEnum<T> where T : struct, System.Enum
+public static class ConvertEnum<T> where T : struct, System.Enum
 {
     static Dictionary<string, T> StringToEnum;
     static Dictionary<T, string> EnumToString;

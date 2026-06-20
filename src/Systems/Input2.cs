@@ -72,8 +72,8 @@ public class Input2 : MoonTools.ECS.System
             Keyboard[InputActions.Down] = CreateKeyboardButtons([KeyCode.Down, KeyCode.S, KeyCode.Keypad2]);
             Keyboard[InputActions.Left] = CreateKeyboardButtons([KeyCode.Left, KeyCode.A, KeyCode.Keypad4]);
             Keyboard[InputActions.Right] = CreateKeyboardButtons([KeyCode.Right, KeyCode.D, KeyCode.Keypad6]);
-            Keyboard[InputActions.Interact] = CreateKeyboardButtons([KeyCode.Z, KeyCode.Y, KeyCode.KeypadEnter, KeyCode.Space]);
-            Keyboard[InputActions.Cancel] = CreateKeyboardButtons([KeyCode.Escape, KeyCode.X, KeyCode.C, KeyCode.V, KeyCode.B, KeyCode.N, KeyCode.Keypad0]);
+            Keyboard[InputActions.Interact] = CreateKeyboardButtons([KeyCode.Z, KeyCode.J, KeyCode.KeypadEnter, KeyCode.Space]);
+            Keyboard[InputActions.Cancel] = CreateKeyboardButtons([KeyCode.Escape, KeyCode.X, KeyCode.K, KeyCode.V, KeyCode.B, KeyCode.N, KeyCode.Keypad0]);
             Keyboard[InputActions.Refresh] = CreateKeyboardButtons([KeyCode.R]);
             Keyboard[InputActions.Reload] = CreateKeyboardButtons([KeyCode.T]);
             Keyboard[InputActions.Fullscreen] = CreateKeyboardButtons([KeyCode.F4]);

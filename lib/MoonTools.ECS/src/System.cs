@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 
 namespace MoonTools.ECS;
 
@@ -12,4 +13,5 @@ public abstract class System : Manipulator
 	protected T ReadMessage<T>() where T : unmanaged => World.ReadMessage<T>();
 	protected bool SomeMessage<T>() where T : unmanaged => World.SomeMessage<T>();
 	protected void Send<T>(T message) where T : unmanaged => World.Send(message);
+	protected Filter FilterOne<T>() where T : unmanaged => FilterBuilder.Include<T>().Build();
 }

@@ -1,7 +1,6 @@
 using System;
 using MoonTools.ECS;
 using MyGame.Components;
-using MyGame.Components;
 using MyGame.Relations;
 using MyGame.Spawn;
 

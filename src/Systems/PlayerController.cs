@@ -32,17 +32,27 @@ public class PlayerController : MoonTools.ECS.System
             if(Some<PreventInput>()) continue;
             InputState input = GlobalInput.Current;
             int xMove = (int)InputToAxis(input.Left.IsDown, input.Right.IsDown);
+            int yMove = (int)InputToAxis(input.Up.IsDown, input.Down.IsDown);
             Set(entity, new IntendedMove(xMove, 0));
             if(input.Interact.IsPressed) {
                 // Set(entity, new AttemptJumpThisFrame());
                 // Set(entity, new Velocity(Get<Velocity>(entity).X, -100));
                 Set(entity, new AttemptJumpThisFrame());
                 if(Has<Grounded>(entity)){
-                    Console.WriteLine("setting grav");
+                    // Console.WriteLine("setting grav");
                      Set(entity, new Gravity(MoveConsts.GRAVITY_PLAYER_JUMP));}
             }
             else if(input.Interact.IsReleased) {
                 Set(entity, new Gravity(MoveConsts.GRAVITY));
+            }
+            if(input.Cancel.IsDown) {
+                Set(entity, new AttemptShootThisFrame());
+            }
+            if(!input.Cancel.IsHeld) {
+                if(input.Up.IsDown) Set(entity, new AimAngle(0, -1));
+                else Set(entity, new AimAngle(1, 0));
+                // else if(input.Left.IsDown) Set(entity, new AimAngle(-1, 0));
+                // else if(input.Right.IsDown) Set(entity, new AimAngle(1, 0));
             }
             // Console.WriteLine($"player vel: {Get<Position>(entity)}");
         }

@@ -49,11 +49,6 @@ public class DialogSystem : MoonTools.ECS.System
                 Set(entity, new PerformDialogBoxFullyClose());
                 Console.WriteLine($"closeDialogAction {closeDialogAction}");
                 switch(closeDialogAction) {
-                    case CloseDialogAction.StartFakeBattle: {
-                        Console.WriteLine("starting fake battle");
-                        Set(CreateEntity(), new StartFakeBattle());
-                        break;
-                    }
                     case CloseDialogAction.PlayGameOverSFX: {
                         EntityPrefabs.PlaySFX(StaticAudio.game_over);
                         Set(CreateEntity(), new StopAllMusic());

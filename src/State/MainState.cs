@@ -70,6 +70,8 @@ public class MainState : GameState
     }
     public override void Start()
     {
+        string workingDir = System.Environment.CurrentDirectory;
+        Console.WriteLine($"work dir: {workingDir}");
         World = new World();
         EntityPrefabs.Init(World);
         audio = new Audio(World, Game.AudioDevice);
@@ -80,6 +82,7 @@ public class MainState : GameState
             .Add(new TimedComponentSystem<ColorOverlayTimer>(World))
             .Add(new TimedComponentSystem<CantShootTimer>(World))
             .Add(new TimedComponentSystem<CantMoveTimer>(World))
+            
             .Add(new AddAfterTimeSystem<PlayStaticSFX>(World, true))
             .Add(new AddAfterTimeSystem<PlayMusic>(World))
             .Add(new AddAfterTimeSystem<StopAllMusic>(World))
@@ -88,7 +91,6 @@ public class MainState : GameState
             .Add(new AddAfterTimeSystem<AdvanceCharCount>(World))
             .Add(new AddAfterTimeSystem<LerpAlpha>(World))
             .Add(new AddAfterTimeSystem<PisonPlayAnim>(World))
-            .Add(new AddAfterTimeSystem<SetDaisyColorOverlay>(World))
             .Add(new AddAfterTimeSystem<AccelerateDir>(World))
             .Add(new AddAfterTimeSystem<RotateSpeed>(World))
             .Add(new AddAfterTimeSystem<LoadVideo>(World))
@@ -98,17 +100,25 @@ public class MainState : GameState
             .Add(new AddAfterTimeSystem<SpriteAnimation>(World))
             .Add(new AddAfterTimeSystem<PlayInteractSounds>(World))
             .Add(new AddAfterTimeSystem<DoNotPlayInteractSounds>(World))
-            .Add(new LerpSystem<SpriteScale>(World, static x => new SpriteScale(x)))
-            .Add(new LerpSystem<Rotation>(World, static x => new Rotation(x)))
+            .Add(new AddAfterTimeSystem<AttemptShootThisFrame>(World))
+            .Add(new LerpSingleSystem<SpriteScale>(World, static x => new SpriteScale(x)))
+            .Add(new LerpSingleSystem<Rotation>(World, static x => new Rotation(x)))
+            .Add(new LerpValueSystem<LocalPosition>(World, static (start,end,t) => new LocalPosition(Vector2.Lerp(start.Value.RawPosition, end.Value.RawPosition, t))))
             .Add(new TimerSystem(World))
             .Add(new PlayerController(World))
+            .Add(new EnemyStateMachine(World))
+            .Add(new EnemyBasicBehaviorSystem(World))
             // .Add(new UpdateRotationSystem(World))
             // .Add(new EnemyBehaviorSystem(World))
             // .Add(new TileMotion(World))
             .Add(new FacingSystem(World))
+            .Add(new ShootSystem(World))
+
             .Add(new MotionWithFlags(World))
             .Add(new CollisionSystem(World))
             .Add(new PostCollision(World))
+
+            .Add(new HandleTriggerSystem(World))
             // .Add(new FourDirectionAnimSystem(World))
             // .Add(new TileCollision(World))
 
@@ -134,6 +144,7 @@ public class MainState : GameState
             .Add(new RemoveSystem<TookDamageLastFrame>(World))
             .Add(new RemoveSystem<AttemptJumpThisFrame>(World))
             .Add(new RemoveSystem<AttemptTalkThisFrame>(World))
+            // .Add(new RemoveSystem<AttemptShootThisFrame>(World))
             .Add(new ReplaceSystem<TookDamageThisFrame, TookDamageLastFrame>(World));
         ;
         postLoadGroup = new SystemGroup(World)
@@ -202,12 +213,12 @@ public class MainState : GameState
     }
     void StartGame(int level)
     {
-        // #if DEBUG
-        //     loadLevelJSON.ReadFile(Path.Combine("~", "Documents", "Moonworks", "projects", "PerroBlaster", "ContentStatic", "Data", "perro_levels.ldtk"));
-        // #else
-        //     loadLevelJSON.ReadFile(Path.Combine("ContentStatic", "Data", "perro_levels.ldtk"));
-        // #endif
-        loadLevelJSON.ReadFile(Path.Combine("ContentStatic", "Data", "perro_levels.ldtk"));
+        #if DEBUG
+            loadLevelJSON.ReadFile(Path.Combine(System.Environment.CurrentDirectory, "ContentStatic", "Data", "perro_levels.ldtk"));
+        #else
+            loadLevelJSON.ReadFile(Path.Combine("ContentStatic", "Data", "perro_levels.ldtk"));
+        #endif
+        // loadLevelJSON.ReadFile(Path.Combine("ContentStatic", "Data", "perro_levels.ldtk"));
         ChangeLevel(level);
     }
     void StartGame()
@@ -283,10 +294,13 @@ public class MainState : GameState
             }
         }
         inputSystem.Update(delta);
-        if(GlobalInput.Current.Cancel.IsPressed) {
+        // if(GlobalInput.Current.Interact.IsPressed) {
+        if(true) { // GlobalInput.Current.Cancel.IsPressed
             updateGroup.Update(delta);
         }
-        
+        // var e = World.CreateEntity();
+        // Console.WriteLine(e);
+        // World.Destroy(e);
 
         // ImguiController.UpdateOrClear((float)delta.TotalSeconds, hideImgui);
         double elapsed = Stopwatch.GetElapsedTime(startTime).TotalSeconds;

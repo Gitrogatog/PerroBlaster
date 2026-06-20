@@ -6,6 +6,7 @@ using MoonTools.ECS;
 using MyGame;
 using MyGame.Components;
 using MyGame.Content;
+using MyGame.Data;
 using MyGame.Relations;
 using MyGame.Spawn;
 using MyGame.Utility;
@@ -29,6 +30,7 @@ public class MotionWithFlags : MoonTools.ECS.System
     List<Entity> MovingOthers = new List<Entity>();
     List<Entity> PushableEntities = new List<Entity>();
     List<Entity> RidingEntities = new List<Entity>();
+    HashSet<Entity> GroundedEntities = new HashSet<Entity>();
     // SpatialHash<Entity> InteractSpatialHash = new SpatialHash<Entity>(0, 0, 1000, 1000, 32);
     // SpatialHash<Entity> SolidSpatialHash = new SpatialHash<Entity>(0, 0, 1000, 1000, 32);
     public MotionWithFlags(World world) : base(world)
@@ -413,6 +415,14 @@ public class MotionWithFlags : MoonTools.ECS.System
             intendedMove = MathUtils.SafeNormalize(new Vector2(Globals.PlayerX - p.X, Globals.PlayerY - p.Y));
             return true;
         }
+        if(Has<MoveTowardPlayerX>(entity)) {
+            intendedMove = MathUtils.SafeNormalize(new Vector2(Globals.PlayerX - p.X, 0));
+            return true;
+        }
+        if(Has<MoveTowardFacing>(entity)) {
+            intendedMove = new Vector2(EntityPrefabs.GetFacingInt(entity), 0);
+            return true;
+        }
         if(Has<MoveToPosition>(entity)) {
             intendedMove = MathUtils.SafeNormalize(Get<MoveToPosition>(entity).Position - p);
             return true;
@@ -443,8 +453,10 @@ public class MotionWithFlags : MoonTools.ECS.System
         
         bool ignoreIntendedY = false;
         if(Has<AttemptJumpThisFrame>(entity) && Has<Grounded>(entity)) {
+            Remove<Grounded>(entity);
             float jumpSpeed = Has<CanJump>(entity) ? Get<CanJump>(entity).Value : MoveConsts.JUMP_STRENGTH_PLAYER;
             vel.Y = -jumpSpeed;
+            Set(entity, new JumpTrigger());
         }
         if(Has<Gravity>(entity)) {
             vel.Y += Get<Gravity>(entity).Value * dt;
@@ -475,28 +487,6 @@ public class MotionWithFlags : MoonTools.ECS.System
         return HasInRelation<Offset>(entity);
     }
 
-    // public void PerformMovement(Entity entity, float dt) {
-    //     if (HasInRelation<Offset>(entity))
-    //     {
-    //         return;
-    //     }
-    //     (var pos, var vel) = CalcVelocity(entity, dt);
-        
-
-    //     if (Has<Rectangle>(entity) && Has<CollidesWithSolids>(entity) && !Has<IgnoreCollision>(entity))
-    //     {
-    //         var result = SweepTest(entity, dt);
-    //         Set(entity, result);
-    //     }
-    //     else
-    //     {
-    //         var scaledVelocity = vel * dt;
-    //         Set(entity, pos + scaledVelocity);
-    //     }
-
-        
-    // }
-
     public override void Update(TimeSpan delta)
     {
         float dt = (float)delta.TotalSeconds;
@@ -507,14 +497,6 @@ public class MotionWithFlags : MoonTools.ECS.System
         MovingOthers.Clear();
 
         // insert entities into the spatial hash
-
-        // foreach (var entity in SolidFilter.Entities)
-        // {
-        //     var position = Get<Position>(entity);
-        //     var rect = Get<Rectangle>(entity);
-        //     var flags = Get<EffectedFlags>(entity);
-        //     SolidSpatialHash.InsertNoCollide(entity, GetWorldRect(position, rect), EffectorFlags.None, flags);
-        // }
 
         // get entities in each category
         foreach(var entity in VelocityFilter.Entities) {
@@ -576,7 +558,12 @@ public class MotionWithFlags : MoonTools.ECS.System
         }
         EntityUtils.RemoveAll<TouchingWall>(World);
         // MARK: Touch Solid Check
-        RemoveAll<Grounded>();
+        GroundedEntities.Clear();
+        while(Some<Grounded>()) {
+            var entity = GetSingletonEntity<Grounded>();
+            Remove<Grounded>(entity);
+            GroundedEntities.Add(entity);
+        }
         foreach (var entity in CollidesWithSolidsFilter.Entities)
         {
             var position = Get<Position>(entity);
@@ -624,6 +611,9 @@ public class MotionWithFlags : MoonTools.ECS.System
                     changeVelocity = true;
                     velocity.Y = 0;
                     Set(entity, new Grounded());
+                    if(!GroundedEntities.Contains(entity)) {
+                        Set(entity, new TouchGroundTrigger());
+                    }
                 }
                 else if(upCollided != SolidCheck.Miss && velocity.Y < 0) {
                     changeVelocity = true;
@@ -632,10 +622,16 @@ public class MotionWithFlags : MoonTools.ECS.System
                 if(leftCollided != SolidCheck.Miss && velocity.X < 0) {
                     changeVelocity = true;
                     velocity.X = 0;
+                    if(Has<FlipFacingOnTouchWall>(entity)) {
+                        Set(entity, new Facing(true));
+                    }
                 }
                 else if(rightCollided != SolidCheck.Miss && velocity.X > 0) {
                     changeVelocity = true;
                     velocity.X = 0;
+                    if(Has<FlipFacingOnTouchWall>(entity)){
+                        Set(entity, new Facing(false));
+                    }
                 }
                 if(changeVelocity) {
                     Set(entity, new Velocity(velocity));
@@ -647,6 +643,14 @@ public class MotionWithFlags : MoonTools.ECS.System
         OffsetSystem.Update(delta);
 
         // MARK: Interact
+        foreach(var entity in SolidFilter.Entities) {
+            var position = Get<Position>(entity);
+            var rect = Get<Rectangle>(entity);
+            var effectorFlags = Has<EffectorFlags>(entity) ? Get<EffectorFlags>(entity) : EffectorFlags.None;
+            var effectedFlags = Get<EffectedFlags>(entity);
+            InteractSpatialHash.InsertNoCollide(entity, GetWorldRect(position, rect), effectorFlags, effectedFlags);
+            // Console.WriteLine(GetTag(entity));
+        }
         foreach (var entity in InteractFilter.Entities)
         {
             var position = Get<Position>(entity);
@@ -656,73 +660,49 @@ public class MotionWithFlags : MoonTools.ECS.System
 
             InteractSpatialHash.InsertAndCollide(entity, GetWorldRect(position, rect), effectorFlags, effectedFlags);
         }
-        // foreach((var entityA, var entityB) in Relations<Colliding>()){
-        //     UnrelateAll<Colliding>(entityA);
-        //     UnrelateAll<Colliding>(entityB);
-        // }
-        int flagID = 0;
-        foreach(var stuff in InteractSpatialHash.Collisions) {
-            flagID++;
-        }
+
         foreach((var source, var target) in Collisions(EffectorFlags.CanDamage)) {
-            Console.WriteLine($"damage interact btwn {source} and {target}");
+            // Console.WriteLine($"damage interact btwn {source} and {target}");
             if((Has<OwnedByEnemy>(source) && Has<OwnedByPlayer>(target)) ||
                 Has<OwnedByPlayer>(source) && Has<OwnedByEnemy>(target)) {
-                // if(!Has< Has<Health>(target)) {
-
-                // }
-                Console.WriteLine("dealing damage!");
+                    Console.WriteLine("DEALING DAMAGE");
+                if(Has<DamageOnContact>(source) && !HasInRelation<Invincible>(target) && Has<Health>(target)) {
+                    DealDamage(source, target);
+                }
+                if(Has<DestroyOnContact>(source)) {
+                    EntityPrefabs.KillEntity(source);
+                }
             }
         }
-        // foreach (var entity in InteractFilter.Entities)
-        // {
-        //     var position = Get<Position>(entity);
-        //     var rect = GetWorldRect(position, Get<Rectangle>(entity));
 
-        //     foreach (var (other, otherRect) in InteractSpatialHash.Retrieve(rect))
-        //     {
-        //         if (entity != other && rect.Intersects(otherRect))
-        //         {
-        //             Relate(entity, other, new Colliding());
-        //         }
-        //     }
+        foreach((var source, var target) in Collisions(EffectorFlags.CanTouchWall)) {
+            // Console.WriteLine("colliding with wall!");
+            if(Has<DestroyOnContact>(source)) {
+                EntityPrefabs.KillEntity(source);
+            }
+        }
+        // foreach(Entity entity in InteractSpatialHash.EffectorCollisions) {
+        //     if(Has<DestroyOnContact>(entity)) {
+        //         EntityPrefabs.KillEntity(entity);
+        //     } 
         // }
+        // foreach(Entity entity in InteractSpatialHash.EffectedCollisions) {
 
-        // start of attempt
-        // foreach (var entity in InteractFilter.Entities)
-        // {
-        //     var position = Get<Position>(entity);
-        //     var rect = Get<Rectangle>(entity);
-        //     (EffectorFlags effectorFlags, EffectedFlags effectedFlags) = Get<CollisionFlags>(entity);
-
-        //     InteractSpatialHash.Insert(entity, GetWorldRect(position, rect), effectorFlags, effectedFlags);
-        // }
-
-        // foreach(var collision in InteractSpatialHash.Collisions[EffectorFlags])
-        // end of attempt
-
-
-        // foreach (var entity in InteractFilter.Entities)
-        // {
-        //     foreach (var other in OutRelations<Colliding>(entity))
-        //     {
-        //         Unrelate<Colliding>(entity, other);
-        //     }
-        // }
-
-        // foreach (var entity in InteractFilter.Entities)
-        // {
-        //     var position = Get<Position>(entity);
-        //     var rect = GetWorldRect(position, Get<Rectangle>(entity));
-
-        //     foreach (var (other, otherRect) in InteractSpatialHash.Retrieve(rect))
-        //     {
-        //         if (entity != other && rect.Intersects(otherRect))
-        //         {
-        //             Relate(entity, other, new Colliding());
-        //         }
-        //     }
         // }
     }
-    List<Collision> Collisions(EffectorFlags flag) => InteractSpatialHash.Collisions[GlobalCollision.flagToID[flag]];
+    void DealDamage(Entity source, Entity entity) {
+        (int current, int max) = Get<Health>(entity);
+        current--;
+        Set(entity, new Health(current, max));
+        if(current <= 0) {
+            EntityPrefabs.KillEntity(entity);
+        }
+        else {
+            Set(entity, new ColorOverlayTimer(new MoonWorks.Graphics.Color(255, 255, 255), 0.1f));
+            if(Has<InvincibleOnDamage>(entity)) {
+                EntityPrefabs.CreateTimer(entity, 0.1f, new Invincible());
+            }
+        }
+    }
+    List<Collision> Collisions(EffectorFlags flag) => InteractSpatialHash.Collisions[GlobalCollision.flagToID[flag] - 1];
 }

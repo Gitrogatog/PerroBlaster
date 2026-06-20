@@ -1,6 +1,7 @@
 
 using System;
 using System.Numerics;
+using System.Threading.Tasks;
 using MoonTools.ECS;
 using MoonWorks.Graphics;
 using MoonWorks.Graphics.Font;
@@ -36,17 +37,284 @@ public static class EntityPrefabs
         Set(entity, new CollidesWithSolids());
         Set(entity, new Facing());
         Set(entity, new Gravity(MoveConsts.GRAVITY));
+        Set(entity, new CanShoot(ShotType.Player, 4, -2, 7f / 60f, AimType.AimAndFacing));
+        Set(entity, new RetainFacingWhileAttemptShoot());
+        Set(entity, new OwnedByPlayer());
+        Set(entity, new Health(5));
         float moveSpeed = 50;
         
         Set(entity, new MoveSpeed(moveSpeed));
         Set(entity, EffectedFlags.CanTakeDamage);
         Set(entity, EffectorFlags.CanTouchWall | EffectorFlags.CanTouchDownPlatform);
-        Set(entity, new DrawAsRectangle());
+        // Set(entity, new DrawAsRectangle());
         Set(entity, new Depth(0.0000001f));
-        Set(entity, new ColorBlend(new Color(255, 0, 0)));
-        // Set(entity, new RiseFallAnimation(SpriteAnimations.perro_jump, SpriteAnimations.perro_fall));
-        // Set(entity, CreateWalkSpeedAnim(SpriteAnimations.perro_walk, moveSpeed));
+        Set(entity, new PlayerAnimation(
+            SpriteAnimations.perro_idle.ID, 
+            SpriteAnimations.perro_walk.ID,
+            SpriteAnimations.perro_walk_back.ID,
+            SpriteAnimations.perro_jump.ID, 
+            SpriteAnimations.perro_fall.ID,
+            SpriteAnimations.perro_up_idle.ID, 
+            SpriteAnimations.perro_up_walk.ID,
+            SpriteAnimations.perro_up_walk_back.ID,
+            SpriteAnimations.perro_up_jump.ID, 
+            SpriteAnimations.perro_up_fall.ID,
+            ComponentUtils.AnimSpeedMult(SpriteAnimations.perro_walk, moveSpeed)));
+
         // Set(entity, new IdleAnimation(SpriteAnimations.perro_idle));
+        Set(entity, new DestroyOnLoad());
+        return entity;
+    }
+    public static Entity MakeEnemy(EnemyType enemyType, int x, int y, bool facing) {
+        var entity = BaseEnemy(x, y, facing);
+        Set(entity, enemyType);
+        switch(enemyType) {
+            case EnemyType.Tumbleweed: {
+                 Set(entity, new MoveSpeed(60));
+                Set(entity, new MoveTowardFacing());
+                Set(entity, new SpriteAnimation(SpriteAnimations.tumbleweed));
+                Set(entity, new Rectangle(10, 10));
+                Set(entity, new DamageOnContact());
+                Set(entity, new FlipFacingOnTouchWall());
+                Set(entity, EffectorFlags.DamageAllWall);
+                Set(entity, EffectedFlags.CanTakeDamage);
+                Set(entity, new Health(5));
+                Set(entity, new Gravity(MoveConsts.GRAVITY));
+                break;
+            }
+            case EnemyType.Chaser: {
+                Set(entity, new MoveSpeed(100));
+                Set(entity, new AccelParams(160));
+                Set(entity, new MoveTowardPlayer());
+                break;
+            }
+            case EnemyType.Throw: {
+                Set(entity, EnemyState.Idle);
+                Set(entity, new IdleAnimation(SpriteAnimations.mole_idle));
+                Set(entity, new HurtAnimation(SpriteAnimations.mole_death));
+                break;
+            }
+            case EnemyType.JumpShootOnLand: {
+                Set(entity, new JumpAfterLanding(1f));
+                Set(entity, new Gravity(MoveConsts.GRAVITY));
+                Set(entity, new Rectangle(10, 10));
+                Set(entity, new DamageOnContact());
+                Set(entity, EffectorFlags.DamageAllWall);
+                Set(entity, EffectedFlags.CanTakeDamage);
+                Set(entity, new Health(5));
+                Set(entity, new IdleAnimation(SpriteAnimations.mud_man_idle));
+                Set(entity, new AirAnimation(SpriteAnimations.mud_man_jump));
+                Set(entity, new ShootWhen<TouchGroundTrigger>(ShotType.Fireball, AimType.Facing));
+                Set(entity, new GroundAirMoveSpeed(0, 60));
+                Set(entity, new MoveTowardFacing());
+                Set(entity, new FlipFacingOnTouchWall());
+                Set(entity, new CanJump(200));
+                break;
+            }
+            case EnemyType.JumpShootPeak: {
+                AddRegularEnemyCollision(entity, 10, 10);
+                Set(entity, new Health(3));
+                Set(entity, new JumpAfterLanding(1f));
+                float canjump = 250;
+                float gravity = MoveConsts.GRAVITY;
+                Set(entity, new CanJump(canjump));
+                Set(entity, new Gravity(gravity));
+                Set(entity, new ShootAfterTimeWhen<JumpTrigger>(ShotType.Fireball, AimType.Facing, canjump / gravity)); // canjump / gravity
+                // Set(entity, new AddAfterTimeWhen<JumpTrigger, AttemptShootThisFrame>(canjump / gravity));                Set(entity, new IdleAnimation(SpriteAnimations.mud_man_idle));
+                Set(entity, new AirAnimation(SpriteAnimations.mud_man_jump));
+                break;
+            }
+        }
+        return entity;
+    }
+    static void AddEnemyCollision(Entity entity, int x, int y, EffectorFlags effectorFlags, EffectedFlags effectedFlags) {
+        Set(entity, new Rectangle(x, y));
+        Set(entity, effectorFlags);
+        Set(entity, effectedFlags);
+    }
+    static void AddRegularEnemyCollision(Entity entity, int x, int y) {
+        AddEnemyCollision(entity, x, y, EffectorFlags.DamageAllWall, EffectedFlags.CanTakeDamage);
+        Set(entity, new DamageOnContact());
+    }
+    public static Entity BaseEnemy(int x, int y, bool facing) {
+        var entity = CreateEntity();
+        Set(entity, new Position(x, y));
+        Set(entity, new Velocity());
+        Set(entity, new Facing(facing));
+        Set(entity, new OwnedByEnemy());
+        Set(entity, new DestroyOnLoad());
+        Set(entity, new CanInteract());
+        Set(entity, new CollidesWithSolids());
+        return entity;
+    }
+    public static void KillEntity(Entity entity) {
+        if(Has<KillTrigger>(entity)) return;
+        Set(entity, new KillTrigger());
+        Set(entity, new DestroyAtEndOfFrame());
+        if(Has<DeathAnimation>(entity)) {
+            (var animData, float time) = Get<DeathAnimation>(entity);
+            var setAnimation = new SetAnimation(animData);
+            var animEntity = CreateEntity();
+            Set(animEntity, setAnimation);
+            Set(animEntity, new Timer(time));
+            Set(animEntity, Get<Position>(entity));
+            Mirror<Facing>(entity, animEntity);
+            Mirror<Rotation>(entity, animEntity);
+        }
+    }
+    public static void AttemptPerformShot(Entity entity, ShotType shotType, AimType aimType) {
+        if(HasInRelation<DontShoot>(entity)) {
+            return;
+        }
+        if(Has<ShotOffset>(entity)) {
+            (int offsetX, int offsetY) = Get<ShotOffset>(entity);
+            PerformShot(entity, shotType, aimType, offsetX, offsetY);
+        }
+        else {
+            PerformShot(entity, shotType, aimType, 0, 0);
+        }
+    }
+    
+    public static void PerformShot(Entity entity, ShotType shotType, AimType aimType, int offsetX, int offsetY) {
+        Vector2 shotDir;
+            switch(aimType) {
+                case AimType.Facing: {
+                    if(Has<Facing>(entity) && Get<Facing>(entity).Right) {
+                        shotDir = new Vector2(1, 0);
+                        offsetX = -offsetX;
+                    }
+                    else {
+                        shotDir = new Vector2(-1, 0);
+                    }
+                    break;
+                }
+                case AimType.AimAngle: {
+                    shotDir = Has<AimAngle>(entity) ? Get<AimAngle>(entity).Angle : Vector2.Zero;
+                    break;
+                }
+                case AimType.AimAndFacing: {
+                    bool facing = EntityPrefabs.GetFacing(entity);
+                    // Console.WriteLine($"facing: {Get<Facing>(entity).Right}");
+                    if(!facing) {
+                        offsetX = -offsetX;
+                    }
+                    if(TryGet(entity, out AimAngle angle) && angle.Angle.Y != 0) {
+                        shotDir = angle.Angle;
+                    }
+                    else if(facing) {
+                        shotDir = new Vector2(1, 0);
+                    }
+                    else {
+                        shotDir = new Vector2(-1, 0);
+                    }
+                    break;
+                }
+                case AimType.PlayerArc: {
+                    var start = Get<Position>(entity);
+                    float height = 20;
+                    Vector2 velocity = MathUtils.InitialProjectileVelocity(start.X, start.Y, Globals.PlayerX, Globals.PlayerY, height, MoveConsts.GRAVITY);
+                    shotDir = velocity;
+                    break;
+                }
+                default: {
+                    shotDir = Vector2.Zero;
+                    break;
+                }
+            }
+            switch(shotType) {
+                case ShotType.Player: {
+                    var shot = MakeBaseBullet(entity, offsetX, offsetY, shotDir, 300, 8, 8, 0.5f);
+                    Set(shot, new SpriteAnimation(SpriteAnimations.yellow_shot));
+                    Set(shot, new DeathAnimation(SpriteAnimations.yellow_shot_dead, Time.SINGLE_FRAME * 4));
+                    if(shotDir.X != 0) {
+                        Set(shot, new Facing(shotDir.X > 0));
+                    }
+                    else {
+                        Set(shot, new Rotation(MathF.PI * 0.5f));
+                    }
+                    break;
+                }
+                case ShotType.Flower: {
+                    var shot = MakeBaseBullet(entity, offsetX, offsetY, shotDir, 1, 8, 8, 5f);
+                    Set(shot, new SpriteAnimation(SpriteAnimations.jump_flower_bullet));
+                    break;
+                }
+                case ShotType.Fireball: {
+                    var shot = MakeBaseBullet(entity, offsetX, offsetY, shotDir, 100, 8, 8, 10f);
+                    Set(shot, new SpriteAnimation(SpriteAnimations.flower_fireball));
+                    break;
+                }
+            }
+    }
+
+    static Entity MakeBaseBullet(Entity source, int offsetX, int offsetY, Vector2 direction, float speed, int width, int height, float lifetime = 0) {
+        var entity = CreateEntity("bullet");
+        Set(entity, new DestroyOnLoad());
+        var pos = Get<Position>(source);
+        Set(entity, new Position(pos.X + offsetX, pos.Y + offsetY));
+        Set(entity, new Velocity(direction * speed));
+        Set(entity, new Rectangle(width, height));
+        Set(entity, EffectorFlags.CanDamage | EffectorFlags.CanTouchWall);
+        Set(entity, EffectedFlags.None);
+        if(Has<OwnedByEnemy>(source)) Set(entity, new OwnedByEnemy());
+        else if (Has<OwnedByPlayer>(source)) Set(entity, new OwnedByPlayer());
+        Set(entity, new DestroyOnContact());
+        Set(entity, new DamageOnContact());
+        Set(entity, new CanInteract());
+        Mirror<Facing>(source, entity);
+        if(lifetime != 0) Set(entity, new Timer(lifetime));
+        // Set(entity, new DrawAsRectangle());
+        // Set(entity, new ColorBlend(new MoonWorks.Graphics.Color(0, 255, 0)));
+        return entity;
+    }
+    // public static void ProcessAttackAction(Entity entity, AttackAction action) {
+    //     if(action.Animation.HasValue) {
+    //         Set(entity, new SequenceAnimation(action.Animation.Value));
+    //     }
+    //     if(action.Shoot.HasValue) {
+    //         Set(entity, action.Shoot.Value);
+    //     }
+    //     if(action.Jump.HasValue) {
+    //         Set(entity, action.Jump.Value);
+    //     }
+    //     if(action.Velocity.HasValue) {
+    //         Set(entity, new Velocity(action.Velocity.Value.Velocity));
+    //     }
+    // }
+    public static void HandleTrigger<T>(Entity entity) where T : ITrigger {
+        if(Has<SpawnThingWhen<T>>(entity)) {
+            ThingType thing = Get<SpawnThingWhen<T>>(entity).Thing;
+        }
+        if(Has<ShootWhen<T>>(entity)) {
+            (ShotType shotType, AimType aimType) = Get<ShootWhen<T>>(entity);
+            AttemptPerformShot(entity, shotType, aimType);
+        }
+        if(Has<PlaySFXWhen<T>>(entity)) {
+            var sfx = Get<PlaySFXWhen<T>>(entity).Sound;
+            PlaySFX(sfx);
+        }
+        if(Has<CreateAnimWhen<T>>(entity)) {
+            var animation = Get<CreateAnimWhen<T>>(entity).Anim;
+            (int x, int y) = Get<Position>(entity);
+            Set(MakeBaseAnimation(animation, x, y), new DestroyOnAnimationFinish());
+        }
+        if(Has<ShootAfterTimeWhen<T>>(entity)) {
+            (ShotType shotType, AimType aimType, float time) = Get<ShootAfterTimeWhen<T>>(entity);
+            Set(CreateTimer(entity, time, new Owner()), new ShootOnTimerEnd(shotType, aimType));
+        }
+    }
+    // static void HandleTriggerAddAfterTime<T1, T2>(Entity entity) where T1 : ITrigger where T2: unmanaged {
+    //     Console.WriteLine("woah");
+    //     if(Has<AddAfterTimeWhen<T1, T2>>(entity)) {
+    //         (T2 component, float time) = Get<AddAfterTimeWhen<T1, T2>>(entity);
+    //         Set(entity, new AddAfterTime<T2>(component,time));
+    //         Console.WriteLine("has add after time!");
+    //     }
+    // }
+    private static Entity MakeBaseAnimation(SpriteAnimationInfoID animID, int x, int y) {
+        var entity = CreateEntity();
+        Set(entity, new SpriteAnimation(SpriteAnimationInfo.FromID(animID)));
+        Set(entity, new Position(x, y));
         Set(entity, new DestroyOnLoad());
         return entity;
     }
@@ -64,11 +332,10 @@ public static class EntityPrefabs
     public static Entity CreateTile(int x, int y, Sprite sprite, float depth) => manipulator.CreateTile(x, y, sprite, depth);
     public static Entity CreateAnimatedTile(int x, int y, SpriteAnimationInfo sprite, float depth) => manipulator.CreateAnimatedTile(x, y, new SpriteAnimation(sprite), depth);
     public static Entity AddSolidCollision(Entity entity, Rectangle rect, EffectedFlags flags) => manipulator.AddSolidCollision(entity, rect, flags);
-    public static Entity CreateEntityOnTileGrid(int x, int y) => manipulator.CreateEntityOnTileGrid(x, y);
     public static Entity CreateTextbox(int textId) => manipulator.CreateTextbox(textId);
     public static Entity CreateDialogText(int textId, int x, int y) {
         var entity = manipulator.CreateText(x + 10 - Dimensions.GAME_W / 2, y - 20, 12, Fonts.RM2000AltID, textId);
-        World.Set(entity, new DestroyOnDialogBoxClose());
+        Set(entity, new DestroyOnDialogBoxClose());
         return entity;
     }
     public static Entity ScreenFadeToBlack(float time) => manipulator.CreateScreenFade(0, 1, time);
@@ -83,14 +350,6 @@ public static class EntityPrefabs
         manipulator.CreateOffsetScreenFade(1, 0, blackTime, clearTime);
     }
     public static Entity CreateThing(ThingType thing, int x, int y) => manipulator.CreateThing(thing, x, y);
-    public static void CreateStartMenu() => manipulator.CreateStartMenu();
-    public static Entity CreateTextWithDelay(int x, int y, int textID, float delay, float charsPerSecond, Color color) {
-        var entity = manipulator.CreateText(x, y, 12, Fonts.RM2000AltID, textID);
-        World.Remove<AdvanceCharCount>(entity);
-        World.Set(entity, new AddAfterTime<AdvanceCharCount>(delay, new AdvanceCharCount(charsPerSecond)));
-        World.Set(entity, color);
-        return entity;
-    }
     public static Entity CreateText(int x, int y, int size, FontID fontID, string text, HorizontalAlignment horizontalAlignment = HorizontalAlignment.Left) 
         => manipulator.CreateTextEntity(x, y, size, fontID, text, horizontalAlignment);
     public static Entity CreateDestroyOnLoad() {
@@ -121,7 +380,7 @@ public static class EntityPrefabs
     public static Entity CreateTimedMessage<T>(T component, float time) where T : unmanaged
     {
         var entity = World.CreateEntity();
-        World.Set(entity, new AddAfterTime<T>(time, component));
+        World.Set(entity, new AddAfterTime<T>(component, time));
         return entity;
     }
     public static Entity CreateVisual(int x, int y, SpriteAnimationInfo animation, float depth = 0.5f) => 
@@ -177,6 +436,13 @@ public static class EntityPrefabs
     }
     public static WalkSpeedModAnimation CreateWalkSpeedAnim(SpriteAnimationInfo anim, float walkSpeed) =>
         new WalkSpeedModAnimation(anim.ID, anim.FrameRate / walkSpeed);
+
+    public static bool GetFacing(Entity entity) {
+        if(!Has<Facing>(entity)) return true;
+        if(Get<Facing>(entity).Right) return true;
+        return false;
+    }
+    public static int GetFacingInt(Entity entity) => GetFacing(entity) ? 1 : -1;
     public static bool Mirror<T>(Entity source, Entity target) where T : unmanaged {
         if(Has<T>(source)) {
             Set(target, World.Get<T>(source));
@@ -339,38 +605,6 @@ internal class EntityManipulator : Manipulator
         }
         return default;
     }
-
-    public Entity CreatePlayer(int x, int y)
-    {
-        Entity entity = CreateEntityOnTileGrid(x, y);
-        Set(entity, new ControlledByPlayer());
-        Set(entity, new Rectangle(10, 10));
-        Set(entity, EffectorFlags.CanTouchWall);
-        Set(entity, EffectedFlags.CanTakeDamage);
-        // , EffectorFlags.CanTouchWall, EffectedFlags.CanTakeDamage
-        
-        Set(entity, new FourDirectionAnim(SpriteAnimations.daisy_up, SpriteAnimations.daisy_down, SpriteAnimations.daisy_left, SpriteAnimations.daisy_right));
-        var lastData = Some<LastPlayerData>() ? GetSingleton<LastPlayerData>() : new LastPlayerData(new SpriteAnimation(SpriteAnimations.daisy_down), new FacingDirection(0, 1));
-        EntityUtils.SetStandAnim(World, entity, lastData.Animation.SpriteAnimationInfo);
-        Set(entity, new DestroyOnLoad());
-        Set(entity, new MoveSpeed(120));
-        Set(entity, new CameraFollow());
-        Set(entity,lastData.Direciton);
-        Set(entity, new Depth(0.4f));
-        // Relate(entity, , new Offset());
-        return entity;
-    }
-    public Entity CreateEntityOnTileGrid(int x, int y) {
-        Entity entity = CreateEntity();
-        AddEntityToTile(entity, x, y);
-        Set(entity, EntityUtils.TileToWorld(x, y));
-        Set(entity, new DestroyOnLoad());
-        return entity;
-    }
-    void AddEntityToTile(Entity entity, int x, int y) {
-        Set(entity, new TilePosition(x, y));
-        Set(entity, new UnprocessedTilePosition());
-    }
     public Entity CreateTextbox(int textId) {
         var entity = CreateEntity();
         Set(entity, new Position(Dimensions.GAME_W / 2 + Globals.CameraX, 200 + Globals.CameraY));
@@ -409,16 +643,6 @@ internal class EntityManipulator : Manipulator
         Set(entity, new WordWrap(270));
         return entity;
     }
-    void CreateTextTest()
-    {
-        var entity = CreateEntity();
-        Set(entity, new Position(100, 100));
-        Set(entity, new Text(Fonts.RM2000ID, 24, "HELLO World Dude!"));
-        Set(entity, new DisplayCharCount(0));
-        Set(entity, new DestroyOnLoad());
-        Set(entity, new AdvanceCharCount(1, 0));
-        Set(entity, new WordWrap(5));
-    }
     public Entity CreateTile(int x, int y, Sprite tileSprite, float depth)
     {
         var entity = CreateEntity("TILE");
@@ -439,44 +663,11 @@ internal class EntityManipulator : Manipulator
     public Entity AddSolidCollision(Entity entity, Rectangle rect, EffectedFlags flags)
     {
         Set(entity, new Solid());
-        Set(entity, new DrawAsRectangle());
+        // Set(entity, new DrawAsRectangle());
         // Set(entity, new CanInteract());
         Set(entity, rect);
         Set(entity, flags);
         return entity;
-    }
-    public void CreateStartMenu() {
-        // CreateTextEntity(60, 20, 8, Fonts.KosugiID, "BUBBA");
-        // var subTitle = CreateTextEntity(70, 65, 12, Fonts.PixeltypeID, "AXE");
-        var title = CreateEntity();
-        Set(title, new DestroyOnLoad());
-        Set(title, new Position(Dimensions.GAME_W / 2, Dimensions.GAME_H / 2));
-        // Set(title, new SpriteAnimation(SpriteAnimations.dennys_start));
-        Set(title, new Depth(1f));
-        EntityPrefabs.ScreenStayBlackThenClear(0.2f, 0.5f);
-        int x = 128 + 64 / 2;
-        int y = 148 + 64 / 2;
-        var timer1 = CreateEntity();
-        Set(timer1, new Timer(0.7f));
-        Set(timer1, new SpawnOnTimerEnd(ThingType.DennyMenuOpen));
-        Set(timer1, new Position(x, y));
-        // var timer2 = CreateEntity();
-        // Set(timer2, new Timer(1.6f));
-        // Set(timer2, new SpawnOnTimerEnd(ThingType.StartMenu));
-        // Set(timer2, new Position(x, y));
-
-        // CreateTextEntity(50, 110, 12, Fonts.PixeltypeID, "Instructions:");
-        // CreateTextEntity(50, 130, 12, Fonts.PixeltypeID, "WASD/Arrow keys: Move");
-        // CreateTextEntity(50, 150, 12, Fonts.PixeltypeID, "Left Click: Throw/Recall Axe");
-        // CreateTextEntity(50, 170, 12, Fonts.PixeltypeID, "Right Click: Teleport To Axe");
-        // CreateTextEntity(50, 190, 12, Fonts.PixeltypeID, "-/= : Decrease/Increase Window Size");
-        // CreateTextEntity(50, 210, 12, Fonts.PixeltypeID, "Right Click to Start!");
-    }
-    public void CreateLastMenu(){
-        // CreateTextEntity(Dimensions.GAME_W / 2, 20, 10, Fonts.KosugiID, "YOU WIN!", HorizontalAlignment.Center);
-        // CreateTextEntity(Dimensions.GAME_W / 2, 80, 12, Fonts.PixeltypeID, "Good job Bubba, you saved the day!!!", HorizontalAlignment.Center);
-        // CreateTextEntity(Dimensions.GAME_W / 2, 110, 12, Fonts.PixeltypeID, $"you died a total of {Globals.DeathCount} times.", HorizontalAlignment.Center);
-        // CreateTextEntity(Dimensions.GAME_W / 2, 140, 12, Fonts.PixeltypeID, "press Escape to close the game.", HorizontalAlignment.Center);
     }
     public Entity CreateTextEntity(int x, int y, int size, FontID fontID, string text, HorizontalAlignment horizontalAlignment=HorizontalAlignment.Left){
         var entity = CreateEntity();
@@ -499,7 +690,7 @@ internal class EntityManipulator : Manipulator
     }
     public Entity CreateOffsetScreenFade(float startAlpha, float endAlpha, float offsetTime, float fadeTime) {
         var entity = BaseScreenFade(startAlpha);
-        Set(entity, new AddAfterTime<LerpAlpha>(offsetTime, new LerpAlpha(startAlpha, endAlpha, fadeTime, 0)));
+        Set(entity, new AddAfterTime<LerpAlpha>(new LerpAlpha(startAlpha, endAlpha, fadeTime, 0), offsetTime));
         return entity;
     }
     private Entity BaseScreenFade(float startAlpha) {
@@ -514,17 +705,6 @@ internal class EntityManipulator : Manipulator
         // Console.WriteLine($"set color blend: {}")
         return entity;
     }
-    public void AddEnemyHitbox(Entity entity, int width, int length, EffectorFlags extraFlags = EffectorFlags.None) {
-        Set(entity, new Rectangle(width, length));
-    }
-    // public Entity CreateLoadSceneMessage(int levelID)
-    // {
-    //     var entity = CreateEntity();
-    //     Set(entity, new DestroyAtEndOfFrame());
-    //     Set(entity, new ChangeLevel(levelID));
-    //     return entity;
-    // }
-    
     public EntityManipulator(World world) : base(world)
     {
     }

@@ -451,7 +451,7 @@ public class Renderer : MoonTools.ECS.Renderer
         {
             return false;
         }
-        return !Get<Facing>(entity).Right;
+        return Get<Facing>(entity).Right;
     }
     public void Dipose() {
         //RenderTexture

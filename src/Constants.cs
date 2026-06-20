@@ -58,9 +58,8 @@ public static class FontSizes
 
 public static class Time
 {
-    public const float ROUND_TIME = 90.0f;
+    public const float SINGLE_FRAME = 1f / 60f;
     public const float CATEGORY_ORDER_TIME = 20.0f;
-    public const float INGREDIENT_ORDER_TIME = 30.0f;
 }
 
 public static class MoveConsts

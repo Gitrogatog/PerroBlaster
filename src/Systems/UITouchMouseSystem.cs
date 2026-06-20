@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using MoonTools.ECS;
 using MoonWorks.Input;
 using MyGame.Components;
@@ -9,26 +10,26 @@ namespace MyGame.Systems;
 public class UITouchMouseSystem : MoonTools.ECS.System
 {
     private Filter EntityFilter;
-    private Filter TouchingFilter;
-    Inputs input;
-    public UITouchMouseSystem(World world, Inputs input) : base(world)
+    public UITouchMouseSystem(World world) : base(world)
     {
-        this.input = input;
         EntityFilter = FilterBuilder
             .Include<Position>()
             .Include<Rectangle>()
+            .Include<IsTouchableUI>()
             .Build();
-        TouchingFilter = FilterBuilder.Include<TouchingMouse>().Build();
     }
 
     public override void Update(TimeSpan delta)
     {
-        foreach (var entity in TouchingFilter.Entities)
-        {
-            Remove<TouchingMouse>(entity);
-        }
+        // foreach (var entity in TouchingFilter.Entities)
+        // {
+        //     Remove<TouchingMouse>(entity);
+        // }
         int x = GlobalInput.MouseX;
         int y = GlobalInput.MouseY;
+        Entity touchingEntity = default;
+        float minDepth = 1000;
+        bool hasFoundEntity = false;
         foreach (var entity in EntityFilter.Entities)
         {
             // Console.WriteLine("running motion");
@@ -37,7 +38,35 @@ public class UITouchMouseSystem : MoonTools.ECS.System
             if (OverlapPoint(rect, position.X, position.Y, x, y))
             {
                 // Console.WriteLine("touching mouse");
-                Set(entity, new TouchingMouse());
+                // Set(entity, new TouchingMouse());
+                float depth = Has<Depth>(entity) ? Get<Depth>(entity).Value : 1;
+                if(depth < minDepth) {
+                    hasFoundEntity = true;
+                    minDepth = depth;
+                    touchingEntity = entity;
+                }
+            }
+        }
+        if(hasFoundEntity) {
+            if(Some<TouchingMouse>()) {
+                var prevEntity = GetSingletonEntity<TouchingMouse>();
+                if(prevEntity != touchingEntity) { // mouse touching different entity
+                    Remove<TouchingMouse>(prevEntity);
+                    Set(prevEntity, new MouseExit());
+                    Set(touchingEntity, new MouseEnter());
+                    Set(touchingEntity, new TouchingMouse());
+                }
+            }
+            else { // mouse wasnt touching any entity
+                Set(touchingEntity, new MouseEnter());
+                Set(touchingEntity, new TouchingMouse());
+            }
+        }
+        else {
+            if(Some<TouchingMouse>()) {
+                touchingEntity = GetSingletonEntity<TouchingMouse>();
+                Remove<TouchingMouse>(touchingEntity);
+                Set(touchingEntity, new MouseExit());
             }
         }
     }

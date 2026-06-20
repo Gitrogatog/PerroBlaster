@@ -18,11 +18,12 @@ public class FacingSystem : MoonTools.ECS.System
     {
         foreach (var entity in EntityFilter.Entities)
         {
+            if(Has<RetainFacingWhileAttemptShoot>(entity) && Has<AttemptShootThisFrame>(entity)) continue;
             if(TryGet<IntendedMove>(entity, out IntendedMove move) && move.Value.X != 0) {
-                Set(entity, new Facing(move.Value.X < 0));
+                Set(entity, new Facing(move.Value.X > 0));
             }
             else if(TryGet<Velocity>(entity, out Velocity velocity) && velocity.Value.X != 0) {
-                Set(entity, new Facing(velocity.Value.X < 0));
+                Set(entity, new Facing(velocity.Value.X > 0));
             }
         }
     }

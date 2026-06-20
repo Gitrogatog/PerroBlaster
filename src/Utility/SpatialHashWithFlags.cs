@@ -30,6 +30,8 @@ public class SpatialHashWithFlags
     private Queue<HashSet<Entity>> hashSetPool = new Queue<HashSet<Entity>>();
     private HashSet<Collision> Pairs = new HashSet<Collision>();
     public List<Collision>[] Collisions;
+    public HashSet<Entity> EffectorCollisions = new HashSet<Entity>();
+    public HashSet<Entity> EffectedCollisions = new HashSet<Entity>();
     public SpatialHashWithFlags(int x, int y, int width, int height, int cellSize)
     {
         X = x;
@@ -87,7 +89,7 @@ public class SpatialHashWithFlags
                     {
                         if (((long) effectorFlags & (long) other.EffectedFlags) != 0 && Rectangle.TestOverlap(rectangle, other.Rectangle))
                         {
-                            AddCollision(parentId, other.Entity, effectorFlags, other.EffectedFlags);
+                           AddCollision(parentId, other.Entity, effectorFlags, other.EffectedFlags);
                         }
 
                         if (((long) effectedFlags & (long) other.EffectorFlags) != 0 && Rectangle.TestOverlap(rectangle, other.Rectangle))
@@ -127,7 +129,13 @@ public class SpatialHashWithFlags
     {
         var collision = new Collision(effector, effected);
 
-        if (Pairs.Contains(collision)) { return; }
+        if (Pairs.Contains(collision)) { 
+            return;
+        }
+
+        Pairs.Add(collision);
+        EffectorCollisions.Add(effector);
+        EffectedCollisions.Add(effected);
 
         var bits = (long) aFlags & (long) bFlags;
 
@@ -135,11 +143,10 @@ public class SpatialHashWithFlags
         {
             if ((bits & (1L << i)) != 0)
             {
+                // Console.WriteLine($"{effector} {effected} {(EffectorFlags)(1L << i)} {i}");
                 Collisions[i].Add(collision);
             }
         }
-
-        Pairs.Add(collision);
     }
     public void PrintCellsAndId() {
         for (var i = 0; i < RowCount; i += 1)
@@ -153,9 +160,9 @@ public class SpatialHashWithFlags
             }
         }
         Console.WriteLine("id box keys");
-        foreach(var key in IDBoxLookup.Keys) {
-            Console.WriteLine($"{key}: {IDBoxLookup[key]}");
-        }
+        // foreach(var key in IDBoxLookup.Keys) {
+        //     Console.WriteLine($"{key}: {IDBoxLookup[key]}");
+        // }
 
         IDBoxLookup.Clear();
     }
@@ -243,6 +250,9 @@ public class SpatialHashWithFlags
         Pairs.Clear();
 
         IDBoxLookup.Clear();
+
+        EffectorCollisions.Clear();
+        EffectedCollisions.Clear();
     }
 
     internal static KeysEnumerator Keys(int minX, int minY, int maxX, int maxY)
